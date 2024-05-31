@@ -1,0 +1,16 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/francouys/Documents/algo712/hamt'
+relocations:
+  - { offsetInCU: 0x26, offset: 0x26, size: 0x8, addend: 0x0, symName: _createHAMT, symObjAddr: 0x0, symBinAddr: 0x1000035F4, symSize: 0x58 }
+  - { offsetInCU: 0x16D, offset: 0x16D, size: 0x8, addend: 0x0, symName: _createHAMT, symObjAddr: 0x0, symBinAddr: 0x1000035F4, symSize: 0x58 }
+  - { offsetInCU: 0x1B1, offset: 0x1B1, size: 0x8, addend: 0x0, symName: _createBitIndexNode, symObjAddr: 0x58, symBinAddr: 0x10000364C, symSize: 0x4C }
+  - { offsetInCU: 0x1D9, offset: 0x1D9, size: 0x8, addend: 0x0, symName: _createLeafNode, symObjAddr: 0xA4, symBinAddr: 0x100003698, symSize: 0x78 }
+  - { offsetInCU: 0x21D, offset: 0x21D, size: 0x8, addend: 0x0, symName: _hashFunction, symObjAddr: 0x11C, symBinAddr: 0x100003710, symSize: 0x14 }
+  - { offsetInCU: 0x245, offset: 0x245, size: 0x8, addend: 0x0, symName: _insertHAMTRec, symObjAddr: 0x130, symBinAddr: 0x100003724, symSize: 0x318 }
+  - { offsetInCU: 0x381, offset: 0x381, size: 0x8, addend: 0x0, symName: _insertHAMT, symObjAddr: 0x448, symBinAddr: 0x100003A3C, symSize: 0x4C }
+  - { offsetInCU: 0x3C1, offset: 0x3C1, size: 0x8, addend: 0x0, symName: _printBitmapBinary, symObjAddr: 0x494, symBinAddr: 0x100003A88, symSize: 0x78 }
+  - { offsetInCU: 0x401, offset: 0x401, size: 0x8, addend: 0x0, symName: _printHAMTRec, symObjAddr: 0x50C, symBinAddr: 0x100003B00, symSize: 0x2D0 }
+  - { offsetInCU: 0x487, offset: 0x487, size: 0x8, addend: 0x0, symName: _printHAMT, symObjAddr: 0x7DC, symBinAddr: 0x100003DD0, symSize: 0x6C }
+  - { offsetInCU: 0x4AB, offset: 0x4AB, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x848, symBinAddr: 0x100003E3C, symSize: 0x98 }
+...
