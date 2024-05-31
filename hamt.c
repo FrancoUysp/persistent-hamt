@@ -36,8 +36,9 @@ typedef struct HAMT {
 
 HAMT* createHAMT(int maxDepth, int blockSize);
 void insertHAMT(HAMT *hamt, int key, int value);
-int searchHAMT(HAMT *hamt, int key);
+int* searchHAMT(HAMT *hamt, int key);
 void freeHAMT(HAMT *hamt);
+int* searchHAMTRec(HAMTNode *node, int key, int depth, int blockSize, int maxDepth);
 
 HAMTNode* createBitIndexNode();
 HAMTNode* createLeafNode(int key, int value);
@@ -208,6 +209,56 @@ void printHAMT(HAMT *hamt) {
 }
 
 
+int* searchHAMTRec(HAMTNode *node, int key, int depth, int blockSize, int maxDepth) {
+    if (node == NULL) {
+        return NULL;
+    }
+
+    unsigned int hash = hashFunction(key);
+    int index = (hash >> (depth * blockSize)) & (MAX_CHILD - 1);
+
+    if (depth >= maxDepth - 1) {
+        int bit = 1 << index;
+        if (!(node->node.bitIndexNode.bitmap & bit)) {
+            return NULL;
+        }
+        HAMTNode *subnode = node->node.bitIndexNode.subnodes[index];
+        if (subnode != NULL && subnode->type == LEAF_NODE && subnode->node.leafNode.key == key) {
+            return subnode->node.leafNode.values;
+        } else {
+            return NULL;
+        }
+    }
+
+    if (node->type == BIT_INDEX_NODE) {
+        int bit = 1 << index;
+        if (!(node->node.bitIndexNode.bitmap & bit)) {
+            return NULL;
+        } else {
+            HAMTNode *subnode = node->node.bitIndexNode.subnodes[index];
+            if (subnode != NULL) {
+                if (subnode->type == LEAF_NODE) {
+                    if (subnode->node.leafNode.key == key) {
+                        return subnode->node.leafNode.values;
+                    } else {
+                        return NULL;
+                    }
+                } else if (subnode->type == BIT_INDEX_NODE) {
+                    return searchHAMTRec(subnode, key, depth + 1, blockSize, maxDepth);
+                }
+            }
+        }
+    }
+
+    return NULL;
+}
+
+
+int* searchHAMT(HAMT *hamt, int key) {
+    return searchHAMTRec(hamt->root, key, 0, hamt->blockSize, hamt->maxDepth);
+}
+
+
 int main() {
     HAMT* ham = createHAMT(MAX_LEVEL, BIT_SEG);
     insertHAMT(ham, 24, 100);
@@ -217,6 +268,18 @@ int main() {
     insertHAMT(ham, 234, 150); // Insert with the same key to demonstrate leaf node transformation
     insertHAMT(ham, 351, 250); // Insert additional value with the same key at max depth
     insertHAMT(ham, 607, 250); // Insert additional value with the same key at max depth
+
+    int *values = searchHAMT(ham, 24);
+    if (values != NULL) {
+        printf("Values for key 24: ");
+        for (int i = 0; i < sizeof(values)/sizeof(values[0]); ++i) {
+            printf("%d ", values[i]);
+        }
+        printf("\n");
+    } else {
+        printf("Key 24 not found.\n");
+    }
+
     printHAMT(ham);
     return 0;
 }
