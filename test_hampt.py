@@ -1,47 +1,39 @@
 import subprocess
-from colorama import Fore, Style, init
+import random
+from colorama import Fore, init
 
 # Initialize colorama
 init(autoreset=True)
 
 def run_hamt_program(commands):
-    # Run the HAMT program
-    process = subprocess.Popen(['./hamt'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = process.communicate(input=commands.encode('utf-8'))
-    
-    # Decode the output
-    output = stdout.decode('utf-8')
-    errors = stderr.decode('utf-8')
-    
-    return output, errors
+    process = subprocess.Popen(['./hamt'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    output, error = process.communicate(commands)
+    return output, error
 
 def main():
-    commands = """insert 24 100
-insert 25 200
-insert 26 300
-search 24
-search 25
-search 26
-update 24 100 150
-update 25 200 250
-update 26 300 350
-search 24
-search 25
-search 26
-delete 24 150
-delete 25 250
-delete 26 350
-search 24
-search 25
-search 26
-insert 100 1000
-insert 200 2000
-insert 300 3000
-search 100
-search 200
-search 300
-print"""
+    # Generate a large number of commands
+    commands = ""
+    for i in range(1000):
+        key = random.randint(0, 10000)
+        value = random.randint(0, 10000)
+        commands += f"insert {key} {value}\n"
+
+    for i in range(1000):
+        key = random.randint(0, 10000)
+        value = random.randint(0, 10000)
+        commands += f"update {key} {value} {value + 100}\n"
     
+    for i in range(500):
+        key = random.randint(0, 10000)
+        value = random.randint(0, 10000)
+        commands += f"delete {key} {value + 100}\n"
+
+    for i in range(1000):
+        key = random.randint(0, 10000)
+        commands += f"search {key} 2500\n"
+
+    commands += "print 2500\n"
+
     output, errors = run_hamt_program(commands)
     
     if errors:
