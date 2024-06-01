@@ -3,149 +3,117 @@
 #include <time.h>
 #include "associative_array.h"
 #include "linked_list.h"
-#include "assoc_std.h"
-#include "linkd_std.h"
 
-#ifdef __APPLE__
-#include <malloc/malloc.h>
-#else
-#include <windows.h>
-#include <psapi.h>
-#endif
+void measureInsertionTimeAssociativeArray(int n, AssociativeArray *assocArray);
+void measureSearchTimeAssociativeArray(int n, AssociativeArray *assocArray);
+void measureDeletionTimeAssociativeArray(int n, AssociativeArray *assocArray);
 
-#define DATA_POINTS 10
-#define INSERTIONS 10000
+void measureInsertionTimeLinkedList(int n, LinkedList *list);
+void measureSearchTimeLinkedList(int n, LinkedList *list);
+void measureDeletionTimeLinkedList(int n, LinkedList *list);
 
-void printMemoryUsage() {
-    #ifdef __APPLE__
-    malloc_statistics_t stats;
-    malloc_zone_statistics(NULL, &stats);
-    printf("Memory in use: %lu bytes\n", stats.size_in_use);
-    #else
-    PROCESS_MEMORY_COUNTERS_EX pmc;
-    GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&pmc, sizeof(pmc));
-    SIZE_T physMemUsedByMe = pmc.WorkingSetSize;
-    printf("Memory in use: %zu bytes\n", physMemUsedByMe);
-    #endif
-}
-
-void memoryExperiment() {
-    printf("Running memory experiment...\n");
-
-    // Measure memory usage for HAMT-based associative array
-    AssociativeArray *hamtArray = createAssociativeArray();
-    for (int i = 0; i < INSERTIONS; ++i) {
-        associativeArrayInsert(hamtArray, i, i);
-    }
-    printMemoryUsage();
-    freeAssociativeArray(hamtArray);
-
-    // Measure memory usage for standard associative array
-    StdHashTable *stdArray = createStdHashTable(INSERTIONS);
-    for (int i = 0; i < INSERTIONS; ++i) {
-        char key[20];
-        sprintf(key, "key%d", i);
-        stdHashTableInsert(stdArray, key, i);
-    }
-    printMemoryUsage();
-    freeStdHashTable(stdArray);
-
-    // Measure memory usage for HAMT-based linked list
-    LinkedList *hamtList = createLinkedList();
-    for (int i = 0; i < INSERTIONS; ++i) {
-        linkedListInsert(hamtList, i);
-    }
-    printMemoryUsage();
-    freeLinkedList(hamtList);
-
-    // Measure memory usage for standard linked list
-    StdLinkedList *stdList = createStdLinkedList();
-    for (int i = 0; i < INSERTIONS; ++i) {
-        stdLinkedListInsert(stdList, i);
-    }
-    printMemoryUsage();
-    freeStdLinkedList(stdList);
-}
-
-void speedExperiment() {
-    printf("Running speed experiment...\n");
-    clock_t start, end;
-    double cpu_time_used;
-
-    // Measure speed for HAMT-based associative array
-    AssociativeArray *hamtArray = createAssociativeArray();
-    start = clock();
-    for (int i = 0; i < INSERTIONS; ++i) {
-        associativeArrayInsert(hamtArray, i, i);
-    }
-    for (int i = 0; i < INSERTIONS; ++i) {
-        associativeArraySearch(hamtArray, i, hamtArray->hamt->currentVersion);
-    }
-    end = clock();
-    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-    printf("HAMT Associative Array speed: %f seconds\n", cpu_time_used);
-    freeAssociativeArray(hamtArray);
-
-    // Measure speed for standard associative array
-    StdHashTable *stdArray = createStdHashTable(INSERTIONS);
-    start = clock();
-    for (int i = 0; i < INSERTIONS; ++i) {
-        char key[20];
-        sprintf(key, "key%d", i);
-        stdHashTableInsert(stdArray, key, i);
-    }
-    for (int i = 0; i < INSERTIONS; ++i) {
-        char key[20];
-        sprintf(key, "key%d", i);
-        stdHashTableSearch(stdArray, key);
-    }
-    end = clock();
-    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-    printf("Standard Associative Array speed: %f seconds\n", cpu_time_used);
-    freeStdHashTable(stdArray);
-
-    // Measure speed for HAMT-based linked list
-    LinkedList *hamtList = createLinkedList();
-    start = clock();
-    for (int i = 0; i < INSERTIONS; ++i) {
-        linkedListInsert(hamtList, i);
-    }
-    for (int i = 0; i < INSERTIONS; ++i) {
-        linkedListGet(hamtList, i, hamtList->hamt->currentVersion);
-    }
-    end = clock();
-    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-    printf("HAMT Linked List speed: %f seconds\n", cpu_time_used);
-    freeLinkedList(hamtList);
-
-    // Measure speed for standard linked list
-    StdLinkedList *stdList = createStdLinkedList();
-    start = clock();
-    for (int i = 0; i < INSERTIONS; ++i) {
-        stdLinkedListInsert(stdList, i);
-    }
-    for (int i = 0; i < INSERTIONS; ++i) {
-        stdLinkedListGet(stdList, i);
-    }
-    end = clock();
-    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-    printf("Standard Linked List speed: %f seconds\n", cpu_time_used);
-    freeStdLinkedList(stdList);
-}
-
-void thirdExperiment() {
-    printf("Running third experiment...\n");
-    // Additional experiment implementation
-}
+void speedExperiment();
 
 int main() {
     // Initialize random seed
     srand(time(NULL));
 
     // Run experiments
-    memoryExperiment();
     speedExperiment();
-    thirdExperiment();
 
     return 0;
+}
+
+void measureInsertionTimeAssociativeArray(int n, AssociativeArray *assocArray) {
+    clock_t start = clock();
+    for (int i = 0; i < n; i++) {
+        associativeArrayInsert(assocArray, i, i);
+    }
+    clock_t end = clock();
+    double timeSpent = (double)(end - start) / CLOCKS_PER_SEC;
+    printf("Insert time for %d elements in Associative Array: %f seconds\n", n, timeSpent);
+}
+
+void measureSearchTimeAssociativeArray(int n, AssociativeArray *assocArray) {
+    clock_t start = clock();
+    for (int i = 0; i < n; i++) {
+        associativeArraySearch(assocArray, i, assocArray->hamt->currentVersion);
+    }
+    clock_t end = clock();
+    double timeSpent = (double)(end - start) / CLOCKS_PER_SEC;
+    printf("Search time for %d elements in Associative Array: %f seconds\n", n, timeSpent);
+}
+
+void measureDeletionTimeAssociativeArray(int n, AssociativeArray *assocArray) {
+    clock_t start = clock();
+    for (int i = 0; i < n; i++) {
+        associativeArrayDelete(assocArray, i);
+    }
+    clock_t end = clock();
+    double timeSpent = (double)(end - start) / CLOCKS_PER_SEC;
+    printf("Delete time for %d elements in Associative Array: %f seconds\n", n, timeSpent);
+}
+
+void measureInsertionTimeLinkedList(int n, LinkedList *list) {
+    clock_t start = clock();
+    for (int i = 0; i < n; i++) {
+        linkedListInsert(list, i);
+    }
+    clock_t end = clock();
+    double timeSpent = (double)(end - start) / CLOCKS_PER_SEC;
+    printf("Insert time for %d elements in Linked List: %f seconds\n", n, timeSpent);
+}
+
+void measureSearchTimeLinkedList(int n, LinkedList *list) {
+    clock_t start = clock();
+    for (int i = 0; i < n; i++) {
+        linkedListGet(list, i, list->hamt->currentVersion);
+    }
+    clock_t end = clock();
+    double timeSpent = (double)(end - start) / CLOCKS_PER_SEC;
+    printf("Search time for %d elements in Linked List: %f seconds\n", n, timeSpent);
+}
+
+void measureDeletionTimeLinkedList(int n, LinkedList *list) {
+    clock_t start = clock();
+    for (int i = 0; i < n; i++) {
+        linkedListDelete(list, 0); // always delete the first element for simplicity
+    }
+    clock_t end = clock();
+    double timeSpent = (double)(end - start) / CLOCKS_PER_SEC;
+    printf("Delete time for %d elements in Linked List: %f seconds\n", n, timeSpent);
+}
+
+void speedExperiment() {
+    printf("Running speed experiment for Associative Array...\n");
+
+    // Create associative array
+    AssociativeArray *assocArray = createAssociativeArray();
+
+    // Measure times for various sizes
+    int sizes[] = {10, 50, 100, 500, 1000, 5000, 10000};
+    int numSizes = sizeof(sizes) / sizeof(sizes[0]);
+    for (int i = 0; i < numSizes; i++) {
+        measureInsertionTimeAssociativeArray(sizes[i], assocArray);
+        measureSearchTimeAssociativeArray(sizes[i], assocArray);
+        measureDeletionTimeAssociativeArray(sizes[i], assocArray);
+    }
+
+    // Free associative array
+    freeAssociativeArray(assocArray);
+
+    printf("Running speed experiment for Linked List...\n");
+
+    // Create linked list
+    LinkedList *list = createLinkedList();
+
+    // Measure times for various sizes
+    for (int i = 0; i < numSizes; i++) {
+        measureInsertionTimeLinkedList(sizes[i], list);
+        measureSearchTimeLinkedList(sizes[i], list);
+        measureDeletionTimeLinkedList(sizes[i], list);
+    }
+
+    // Free linked list
+    freeLinkedList(list);
 }

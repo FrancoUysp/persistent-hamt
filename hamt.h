@@ -76,4 +76,6 @@ QueueNode *dequeue(QueueNode **head);
 void printVersions(VersionedHAMT *vhamt);
 void freeHAMTNode(HAMTNode *node);
 
+void intToStr(int num, char *str);
+
 #endif // HAMT_H

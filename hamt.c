@@ -1,3 +1,10 @@
+/* Sedgewick universal hash from Sedgewick R, "Algorithms in C" Third
+ * Edition, 1998, p. 579. Works on null-terminated C strings.
+ *
+ * Best hash function for 32-ary trees according to Bagwell P, "Ideal
+ * Hash Trees" (in comparison with Elf and PJW hash).
+ */
+
 #include "hamt.h"
 
 VersionedHAMT* createVersionedHAMT(int maxDepth, int blockSize) {
@@ -35,10 +42,20 @@ HAMTNode* createLeafNode(int key, int value) {
     return node;
 }
 
-unsigned int hashFunction(int key) {
-    // Simple hash function for demonstration purposes
-    return key;
+void intToStr(int num, char *str) {
+    sprintf(str, "%d", num);
 }
+unsigned int hashFunction(int key) {
+    char str[12]; 
+    intToStr(key, str);
+
+    unsigned int h = 0;
+    for (char *v = str; *v != '\0'; v++) {
+        h = (64 * h + *v) % 4294967291U;
+    }
+    return h;
+}
+
 
 HAMTNode* copyHAMTNode(HAMTNode *node) {
     if (node == NULL) return NULL;
@@ -222,6 +239,7 @@ void insertHAMT(VersionedHAMT *vhamt, int key, int value) {
     vhamt->versionCount++;
     vhamt->currentVersion = vhamt->versionCount - 1;
 }
+
 
 
 SearchResult searchHAMTRec(HAMTNode *node, int key, int depth, int blockSize, int maxDepth) {
