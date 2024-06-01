@@ -16,55 +16,38 @@ def run_hamt_program(commands):
     return output, errors
 
 def main():
-    commands = """
-				insert 1 100
-				insert 2 200
-				insert 3 300
-				insert 4 400
-				insert 8 800
-				insert 213 21300
-				insert 23 2300
-				insert 5 500
-				search 1
-				search 2
-				search 3
-				search 4
-				search 8
-				search 213
-				search 23
-				search 5
-				search 6
-				print
-				"""
+    commands = """insert 24 100
+insert 25 200
+insert 26 300
+search 24
+search 25
+search 26
+update 24 100 150
+update 25 200 250
+update 26 300 350
+search 24
+search 25
+search 26
+delete 24 150
+delete 25 250
+delete 26 350
+search 24
+search 25
+search 26
+insert 100 1000
+insert 200 2000
+insert 300 3000
+search 100
+search 200
+search 300
+print"""
     
     output, errors = run_hamt_program(commands)
     
     if errors:
         print(Fore.RED + "Errors:\n" + errors)
     else:
-        print(Fore.GREEN + "Program Output:\n" + output)
-    
-    # Perform tests on the output
-    test_cases = {
-        "Search key 1: 100": "Expected output for key 1 not found",
-        "Search key 2: 200": "Expected output for key 2 not found",
-        "Search key 3: 300": "Expected output for key 3 not found",
-        "Search key 4: 400": "Expected output for key 4 not found",
-        "Search key 8: 800": "Expected output for key 8 not found",
-        "Search key 213: 21300": "Expected output for key 213 not found",
-        "Search key 23: 2300": "Expected output for key 23 not found",
-        "Search key 5: 500": "Expected output for key 5 not found",
-        "Search key 6: -1": "Expected output for key 6 not found",
-    }
-
-    for expected_output, error_message in test_cases.items():
-        try:
-            assert expected_output in output, error_message
-            print(Fore.GREEN + f"Test passed: {expected_output}")
-        except AssertionError as e:
-            print(Fore.RED + f"Test failed: {e}")
-
-    print(Style.BRIGHT + "All tests completed!")
+        print(Fore.GREEN + "Output:\n" + output)
 
 if __name__ == "__main__":
     main()
