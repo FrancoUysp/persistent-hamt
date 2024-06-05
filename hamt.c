@@ -1,4 +1,12 @@
+//Refrences
 //https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key
+
+
+// TODO: allow for different types of values and keys ( think about it if we use a linked list to store strings with this thing as the backend then we would like to hash the string value with itself as the value and the string)
+// TODO: force the hash to return a u_int_32 (change the return type) but this will also change some other parts of the code (this should be easier)
+// TODO: build a frontend linked list for this hamt and a standart one and then have a main.c run a comparison between the different operations between the two. 
+
+// TODO: think of experiments!!!
 #include "hamt.h"
 
 VersionedHAMT* createVersionedHAMT() {
@@ -478,9 +486,9 @@ void measurePerformance(int N, int D, int U) {
 }
 
 int main() {
-    int N = 10000000;  
-    int U = 50000;   
-    int D = 50000;   
+    int N = 1000;  
+    int U = 500;   
+    int D = 500;   
 
     // Seed the random number generator
     srand(time(NULL));
