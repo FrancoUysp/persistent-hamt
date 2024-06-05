@@ -1,26 +1,18 @@
-/* Sedgewick universal hash from Sedgewick R, "Algorithms in C" Third
- * Edition, 1998, p. 579. Works on null-terminated C strings.
- *
- * Best hash function for 32-ary trees according to Bagwell P, "Ideal
- * Hash Trees" (in comparison with Elf and PJW hash).
- */
-
+//https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key
 #include "hamt.h"
 
-VersionedHAMT* createVersionedHAMT(int maxDepth, int blockSize) {
+VersionedHAMT* createVersionedHAMT() {
     VersionedHAMT* vhamt = (VersionedHAMT*)(calloc(1, sizeof(VersionedHAMT)));
     vhamt->versions = (HAMT**)(calloc(1, sizeof(HAMT*)));
-    vhamt->versions[0] = createHAMT(maxDepth, blockSize);
+    vhamt->versions[0] = createHAMT();
     vhamt->versionCount = 1;
     vhamt->currentVersion = 0;
     return vhamt;
 }
 
-HAMT* createHAMT(int maxDepth, int blockSize) {
+HAMT* createHAMT() {
     HAMT* new_hamt = (HAMT*)(calloc(1, sizeof(HAMT)));
     new_hamt->root = createBitIndexNode();
-    new_hamt->maxDepth = maxDepth;
-    new_hamt->blockSize = blockSize;
     return new_hamt;
 }
 
@@ -42,80 +34,225 @@ HAMTNode* createLeafNode(int key, int value) {
     return node;
 }
 
-void intToStr(int num, char *str) {
-    sprintf(str, "%d", num);
+unsigned int hashFunction(int x) {
+    x = ((x >> 16) ^ x) * 0x45d9f3b;
+    x = ((x >> 16) ^ x) * 0x45d9f3b;
+    x = (x >> 16) ^ x;
+    return x;
 }
-unsigned int hashFunction(int key) {
-    char str[12]; 
-    intToStr(key, str);
 
-    unsigned int h = 0;
-    for (char *v = str; *v != '\0'; v++) {
-        h = (64 * h + *v) % 4294967291U;
+
+HAMTNode* insertHAMTRec(HAMTNode *node, int key, int value, int depth) {
+    unsigned int hash = hashFunction(key);
+    int index = (hash >> (depth * BIT_SEG)) & (MAX_CHILD - 1);
+
+    if (node == NULL) {
+        return createLeafNode(key, value);
     }
-    return h;
-}
 
+    if (node->type == LEAF_NODE) {
+        if (node->node.leafNode.key == key) {
+            HAMTNode *newLeaf = malloc(sizeof(HAMTNode));
+            *newLeaf = *node;
+            newLeaf->node.leafNode.values = realloc(newLeaf->node.leafNode.values, (newLeaf->node.leafNode.valueCount + 1) * sizeof(int));
+            newLeaf->node.leafNode.values[newLeaf->node.leafNode.valueCount++] = value;
+            return newLeaf;
+        } else {
+            HAMTNode *newBitIndexNode = createBitIndexNode();
+            unsigned int existingHash = hashFunction(node->node.leafNode.key);
+            int existingIndex = (existingHash >> (depth * BIT_SEG)) & (MAX_CHILD - 1);
+            newBitIndexNode->node.bitIndexNode.bitmap |= (1 << existingIndex);
+            newBitIndexNode->node.bitIndexNode.subnodes[existingIndex] = node;
+            newBitIndexNode->node.bitIndexNode.subnodes[index] = insertHAMTRec(NULL, key, value, depth + 1);
+            return newBitIndexNode;
+        }
+    } else if (node->type == BIT_INDEX_NODE) {
+        HAMTNode *newNode = malloc(sizeof(HAMTNode));
+        *newNode = *node;
+        newNode->node.bitIndexNode.subnodes = calloc(MAX_CHILD, sizeof(HAMTNode*));
 
-HAMTNode* copyHAMTNode(HAMTNode *node) {
-    if (node == NULL) return NULL;
-    HAMTNode *newNode = malloc(sizeof(HAMTNode));
-    newNode->type = node->type;
-    if (node->type == BIT_INDEX_NODE) {
-        newNode->node.bitIndexNode.bitmap = node->node.bitIndexNode.bitmap;
-        newNode->node.bitIndexNode.subnodes = malloc(MAX_CHILD * sizeof(HAMTNode*));
-        for (int i = 0; i < MAX_CHILD; ++i) {
-            if (node->node.bitIndexNode.subnodes[i] != NULL) {
-                newNode->node.bitIndexNode.subnodes[i] = copyHAMTNode(node->node.bitIndexNode.subnodes[i]);
-            } else {
-                newNode->node.bitIndexNode.subnodes[i] = NULL;
+        // Copy existing subnodes references
+        for (int i = 0; i < MAX_CHILD; i++) {
+            if (i != index) {
+                newNode->node.bitIndexNode.subnodes[i] = node->node.bitIndexNode.subnodes[i];
             }
         }
-    } else if (node->type == LEAF_NODE) {
-        newNode->node.leafNode.key = node->node.leafNode.key;
-        newNode->node.leafNode.valueCount = node->node.leafNode.valueCount;
-        newNode->node.leafNode.values = malloc(node->node.leafNode.valueCount * sizeof(int));
-        memcpy(newNode->node.leafNode.values, node->node.leafNode.values, node->node.leafNode.valueCount * sizeof(int));
+
+        // Recursively insert into the correct subnode
+        newNode->node.bitIndexNode.subnodes[index] = insertHAMTRec(node->node.bitIndexNode.subnodes[index], key, value, depth + 1);
+        newNode->node.bitIndexNode.bitmap |= (1 << index);
+
+        return newNode;
     }
-    return newNode;
+
+    return NULL; // Should never reach here
 }
 
 
-void deleteHAMT(VersionedHAMT *vhamt, int key, int value) {
-    int latestVersion = vhamt->versionCount - 1;
-    HAMT *newHamt = createHAMT(vhamt->versions[latestVersion]->maxDepth, vhamt->versions[latestVersion]->blockSize);
-    newHamt->root = copyHAMTNode(vhamt->versions[latestVersion]->root);
-    newHamt->root = deleteHAMTRec(newHamt->root, key, value, 0, newHamt->blockSize, newHamt->maxDepth);
+void insertVersion(VersionedHAMT *vhamt, int key, int value, int version) {
+    HAMT *newHamt = createHAMT();
+    newHamt->root = insertHAMTRec(vhamt->versions[version-1]->root, key, value, 0);
     vhamt->versions = realloc(vhamt->versions, (vhamt->versionCount + 1) * sizeof(HAMT*));
     vhamt->versions[vhamt->versionCount] = newHamt;
     vhamt->versionCount++;
     vhamt->currentVersion = vhamt->versionCount - 1;
 }
 
-HAMTNode* deleteHAMTRec(HAMTNode *node, int key, int value, int depth, int blockSize, int maxDepth) {
+void insert(VersionedHAMT *vhamt, int key, int value) {
+    int latestVersion = vhamt->versionCount - 1;
+    HAMT *newHamt = createHAMT();
+    newHamt->root = insertHAMTRec(vhamt->versions[latestVersion]->root, key, value, 0);
+    vhamt->versions = realloc(vhamt->versions, (vhamt->versionCount + 1) * sizeof(HAMT*));
+    vhamt->versions[vhamt->versionCount] = newHamt;
+    vhamt->versionCount++;
+    vhamt->currentVersion = vhamt->versionCount - 1;
+}
+
+
+SearchResult searchHAMTRec(HAMTNode *node, int key, int depth) {
+    SearchResult result = {NULL, 0};
+    if (node == NULL) {
+        return result;
+    }
+
+    unsigned int hash = hashFunction(key);
+    int index = (hash >> (depth * BIT_SEG)) & (MAX_CHILD - 1);
+
+    if (node->type == LEAF_NODE) {
+        if (node->node.leafNode.key == key) {
+            result.values = node->node.leafNode.values;
+            result.valueCount = node->node.leafNode.valueCount;
+            return result;
+        }
+    } else if (node->type == BIT_INDEX_NODE) {
+        int bit = 1 << index;
+        if (node->node.bitIndexNode.bitmap & bit) {
+            HAMTNode *subnode = node->node.bitIndexNode.subnodes[index];
+            return searchHAMTRec(subnode, key, depth + 1);
+        }
+    }
+
+    return result;
+}
+
+SearchResult search(VersionedHAMT *vhamt, int key) {
+    int latestVersion = vhamt->versionCount - 1;
+    if (latestVersion >= vhamt->versionCount) {
+        printf("Version %d does not exist.\n", latestVersion);
+        SearchResult result = {NULL, 0};
+        return result;
+    }
+    return searchHAMTRec(vhamt->versions[latestVersion]->root, key, 0);
+}
+SearchResult searchVersion(VersionedHAMT *vhamt, int key, int version) {
+    if (version >= vhamt->versionCount) {
+        printf("Version %d does not exist.\n", version);
+        SearchResult result = {NULL, 0};
+        return result;
+    }
+    return searchHAMTRec(vhamt->versions[version]->root, key, 0);
+}
+
+HAMTNode* updateHAMTRec(HAMTNode *node, int key, int oldValue, int newValue, int depth) {
     if (node == NULL) {
         return NULL;
     }
 
     unsigned int hash = hashFunction(key);
-    int index = (hash >> (depth * blockSize)) & (MAX_CHILD - 1);
+    int index = (hash >> (depth * BIT_SEG)) & (MAX_CHILD - 1);
+
+    if (node->type == LEAF_NODE) {
+        if (node->node.leafNode.key == key) {
+            HAMTNode *newLeaf = malloc(sizeof(HAMTNode));
+            *newLeaf = *node;
+            newLeaf->node.leafNode.values = malloc(newLeaf->node.leafNode.valueCount * sizeof(int));
+            for (int i = 0; i < newLeaf->node.leafNode.valueCount; ++i) {
+                newLeaf->node.leafNode.values[i] = node->node.leafNode.values[i];
+            }
+            for (int i = 0; i < newLeaf->node.leafNode.valueCount; ++i) {
+                if (newLeaf->node.leafNode.values[i] == oldValue) {
+                    newLeaf->node.leafNode.values[i] = newValue;
+                    return newLeaf;
+                }
+            }
+            free(newLeaf->node.leafNode.values);
+            free(newLeaf);
+        }
+        return node;
+    }
+
+    if (node->type == BIT_INDEX_NODE) {
+        HAMTNode *newNode = malloc(sizeof(HAMTNode));
+        *newNode = *node;
+        newNode->node.bitIndexNode.subnodes = calloc(MAX_CHILD, sizeof(HAMTNode*));
+
+        // Copy existing subnodes references
+        for (int i = 0; i < MAX_CHILD; i++) {
+            if (i != index) {
+                newNode->node.bitIndexNode.subnodes[i] = node->node.bitIndexNode.subnodes[i];
+            }
+        }
+
+        // Recursively update the correct subnode
+        newNode->node.bitIndexNode.subnodes[index] = updateHAMTRec(node->node.bitIndexNode.subnodes[index], key, oldValue, newValue, depth + 1);
+        newNode->node.bitIndexNode.bitmap |= (1 << index);
+
+        return newNode;
+    }
+
+    return NULL; // Should never reach here
+}
+
+
+
+
+void updateVersion(VersionedHAMT *vhamt, int key, int oldValue, int newValue, int version) {
+    HAMT *newHamt = createHAMT();
+    newHamt->root = updateHAMTRec(vhamt->versions[version]->root, key, oldValue, newValue, 0);
+    vhamt->versions = realloc(vhamt->versions, (vhamt->versionCount + 1) * sizeof(HAMT*));
+    vhamt->versions[vhamt->versionCount] = newHamt;
+    vhamt->versionCount++;
+    vhamt->currentVersion = vhamt->versionCount - 1;
+}
+
+void update(VersionedHAMT *vhamt, int key, int oldValue, int newValue) {
+    int latestVersion = vhamt->versionCount - 1;
+    HAMT *newHamt = createHAMT();
+    newHamt->root = updateHAMTRec(vhamt->versions[latestVersion]->root, key, oldValue, newValue, 0);
+    vhamt->versions = realloc(vhamt->versions, (vhamt->versionCount + 1) * sizeof(HAMT*));
+    vhamt->versions[vhamt->versionCount] = newHamt;
+    vhamt->versionCount++;
+    vhamt->currentVersion = vhamt->versionCount - 1;
+}
+
+
+HAMTNode* deleteHAMTRec(HAMTNode *node, int key, int value, int depth) {
+    if (node == NULL) {
+        return NULL;
+    }
+
+    unsigned int hash = hashFunction(key);
+    int index = (hash >> (depth * BIT_SEG)) & (MAX_CHILD - 1);
 
     if (node->type == LEAF_NODE) {
         if (node->node.leafNode.key == key) {
             for (int i = 0; i < node->node.leafNode.valueCount; ++i) {
                 if (node->node.leafNode.values[i] == value) {
-                    // Shift values to the left to overwrite the deleted value
-                    for (int j = i; j < node->node.leafNode.valueCount - 1; ++j) {
-                        node->node.leafNode.values[j] = node->node.leafNode.values[j + 1];
+                    HAMTNode *newLeaf = malloc(sizeof(HAMTNode));
+                    *newLeaf = *node;
+                    newLeaf->node.leafNode.values = malloc((newLeaf->node.leafNode.valueCount - 1) * sizeof(int));
+                    for (int j = 0, k = 0; j < newLeaf->node.leafNode.valueCount; ++j) {
+                        if (j != i) {
+                            newLeaf->node.leafNode.values[k++] = newLeaf->node.leafNode.values[j];
+                        }
                     }
-                    node->node.leafNode.valueCount--;
-                    if (node->node.leafNode.valueCount == 0) {
-                        // If the leaf node becomes empty, remove it
-                        free(node->node.leafNode.values);
-                        free(node);
+                    newLeaf->node.leafNode.valueCount--;
+                    if (newLeaf->node.leafNode.valueCount == 0) {
+                        free(newLeaf->node.leafNode.values);
+                        free(newLeaf);
                         return NULL;
                     }
-                    return node;
+                    return newLeaf;
                 }
             }
         }
@@ -123,188 +260,55 @@ HAMTNode* deleteHAMTRec(HAMTNode *node, int key, int value, int depth, int block
     }
 
     if (node->type == BIT_INDEX_NODE) {
-        int bit = 1 << index;
-        if (node->node.bitIndexNode.bitmap & bit) {
-            HAMTNode *subnode = node->node.bitIndexNode.subnodes[index];
-            HAMTNode *newSubnode = deleteHAMTRec(subnode, key, value, depth + 1, blockSize, maxDepth);
-            if (newSubnode == NULL) {
-                node->node.bitIndexNode.bitmap &= ~bit;
-                node->node.bitIndexNode.subnodes[index] = NULL;
+        HAMTNode *newNode = malloc(sizeof(HAMTNode));
+        *newNode = *node;
+        newNode->node.bitIndexNode.subnodes = calloc(MAX_CHILD, sizeof(HAMTNode*));
+
+        for (int i = 0; i < MAX_CHILD; i++) {
+            if (i != index) {
+                newNode->node.bitIndexNode.subnodes[i] = node->node.bitIndexNode.subnodes[i];
             }
-            return node;
         }
+
+        newNode->node.bitIndexNode.subnodes[index] = deleteHAMTRec(node->node.bitIndexNode.subnodes[index], key, value, depth + 1);
+        if (newNode->node.bitIndexNode.subnodes[index] == NULL) {
+            newNode->node.bitIndexNode.bitmap &= ~(1 << index);
+        }
+
+        if (newNode->node.bitIndexNode.bitmap == 0) {
+            free(newNode->node.bitIndexNode.subnodes);
+            free(newNode);
+            return NULL;
+        }
+
+        return newNode;
     }
-    return node;
+
+    return NULL;
 }
 
-void updateHAMT(VersionedHAMT *vhamt, int key, int oldValue, int newValue) {
-    int latestVersion = vhamt->versionCount - 1;
-    HAMT *newHamt = createHAMT(vhamt->versions[latestVersion]->maxDepth, vhamt->versions[latestVersion]->blockSize);
-    newHamt->root = copyHAMTNode(vhamt->versions[latestVersion]->root);
-    updateHAMTRec(newHamt->root, key, oldValue, newValue, 0, newHamt->blockSize, newHamt->maxDepth);
-    vhamt->versions = realloc(vhamt->versions, (vhamt->versionCount + 1) * sizeof(HAMT*));
-    vhamt->versions[vhamt->versionCount] = newHamt;
-    vhamt->versionCount++;
-    vhamt->currentVersion = vhamt->versionCount - 1;
-}
-void updateHAMTRec(HAMTNode *node, int key, int oldValue, int newValue, int depth, int blockSize, int maxDepth) {
-    if (node == NULL) {
-        return;
-    }
 
-    unsigned int hash = hashFunction(key);
-    int index = (hash >> (depth * blockSize)) & (MAX_CHILD - 1);
 
-    if (node->type == LEAF_NODE) {
-        if (node->node.leafNode.key == key) {
-            for (int i = 0; i < node->node.leafNode.valueCount; ++i) {
-                if (node->node.leafNode.values[i] == oldValue) {
-                    node->node.leafNode.values[i] = newValue;
-                    return;
-                }
-            }
-        }
-        return;
-    }
 
-    if (node->type == BIT_INDEX_NODE) {
-        int bit = 1 << index;
-        if (node->node.bitIndexNode.bitmap & bit) {
-            HAMTNode *subnode = node->node.bitIndexNode.subnodes[index];
-            updateHAMTRec(subnode, key, oldValue, newValue, depth + 1, blockSize, maxDepth);
-        }
-    }
-}
-
-void insertHAMTRec(HAMTNode **node, int key, int value, int depth, int blockSize, int maxDepth) {
-    unsigned int hash = hashFunction(key);
-    int index = (hash >> (depth * blockSize)) & (MAX_CHILD - 1);
-
-    if (*node == NULL) {
-        *node = createLeafNode(key, value);
-        return;
-    }
-
-    if (depth >= maxDepth - 1) {
-        if ((*node)->type == LEAF_NODE) {
-            if ((*node)->node.leafNode.key == key) {
-                (*node)->node.leafNode.values = realloc((*node)->node.leafNode.values, ((*node)->node.leafNode.valueCount + 1) * sizeof(int));
-                (*node)->node.leafNode.values[(*node)->node.leafNode.valueCount++] = value;
-            } else {
-                HAMTNode *newBitIndexNode = createBitIndexNode();
-                unsigned int existingHash = hashFunction((*node)->node.leafNode.key);
-                int existingIndex = (existingHash >> (depth * blockSize)) & (MAX_CHILD - 1);
-                newBitIndexNode->node.bitIndexNode.bitmap |= (1 << existingIndex);
-                newBitIndexNode->node.bitIndexNode.subnodes[existingIndex] = *node;
-                *node = newBitIndexNode;
-                insertHAMTRec(node, key, value, depth, blockSize, maxDepth);
-            }
-        } else {
-            int bit = 1 << index;
-            if (!((*node)->node.bitIndexNode.bitmap & bit)) {
-                (*node)->node.bitIndexNode.bitmap |= bit;
-                (*node)->node.bitIndexNode.subnodes[index] = createLeafNode(key, value);
-            } else {
-                insertHAMTRec(&((*node)->node.bitIndexNode.subnodes[index]), key, value, depth + 1, blockSize, maxDepth);
-            }
-        }
-    } else {
-        if ((*node)->type == BIT_INDEX_NODE) {
-            int bit = 1 << index;
-            if (!((*node)->node.bitIndexNode.bitmap & bit)) {
-                (*node)->node.bitIndexNode.bitmap |= bit;
-                (*node)->node.bitIndexNode.subnodes[index] = createLeafNode(key, value);
-            } else {
-                insertHAMTRec(&((*node)->node.bitIndexNode.subnodes[index]), key, value, depth + 1, blockSize, maxDepth);
-            }
-        } else {
-            HAMTNode *newBitIndexNode = createBitIndexNode();
-            unsigned int existingHash = hashFunction((*node)->node.leafNode.key);
-            int existingIndex = (existingHash >> (depth * blockSize)) & (MAX_CHILD - 1);
-            newBitIndexNode->node.bitIndexNode.bitmap |= (1 << existingIndex);
-            newBitIndexNode->node.bitIndexNode.subnodes[existingIndex] = *node;
-            *node = newBitIndexNode;
-            insertHAMTRec(node, key, value, depth, blockSize, maxDepth);
-        }
-    }
-}
-
-void insertHAMT(VersionedHAMT *vhamt, int key, int value) {
-    int latestVersion = vhamt->versionCount - 1;
-    HAMT *newHamt = createHAMT(vhamt->versions[latestVersion]->maxDepth, vhamt->versions[latestVersion]->blockSize);
-    newHamt->root = copyHAMTNode(vhamt->versions[latestVersion]->root);
-    insertHAMTRec(&(newHamt->root), key, value, 0, newHamt->blockSize, newHamt->maxDepth);
+void deleteVersion(VersionedHAMT *vhamt, int key, int value, int version) {
+    HAMT *newHamt = createHAMT();
+    newHamt->root = deleteHAMTRec(vhamt->versions[version]->root, key, value, 0);
     vhamt->versions = realloc(vhamt->versions, (vhamt->versionCount + 1) * sizeof(HAMT*));
     vhamt->versions[vhamt->versionCount] = newHamt;
     vhamt->versionCount++;
     vhamt->currentVersion = vhamt->versionCount - 1;
 }
 
-
-
-SearchResult searchHAMTRec(HAMTNode *node, int key, int depth, int blockSize, int maxDepth) {
-    SearchResult result = {NULL, 0};
-    if (node == NULL) {
-        return result;
-    }
-
-    unsigned int hash = hashFunction(key);
-    int index = (hash >> (depth * blockSize)) & (MAX_CHILD - 1);
-
-    if (depth >= maxDepth - 1) {
-        int bit = 1 << index;
-        if (!(node->node.bitIndexNode.bitmap & bit)) {
-            return result;
-        }
-        HAMTNode *subnode = node->node.bitIndexNode.subnodes[index];
-        if (subnode != NULL && subnode->type == LEAF_NODE && subnode->node.leafNode.key == key) {
-            result.values = subnode->node.leafNode.values;
-            result.valueCount = subnode->node.leafNode.valueCount;
-            return result;
-        } else {
-            return result;
-        }
-    }
-
-    if (node->type == BIT_INDEX_NODE) {
-        int bit = 1 << index;
-        if (!(node->node.bitIndexNode.bitmap & bit)) {
-            return result;
-        } else {
-            HAMTNode *subnode = node->node.bitIndexNode.subnodes[index];
-            if (subnode != NULL) {
-                if (subnode->type == LEAF_NODE) {
-                    if (subnode->node.leafNode.key == key) {
-                        result.values = subnode->node.leafNode.values;
-                        result.valueCount = subnode->node.leafNode.valueCount;
-                        return result;
-                    } else {
-                        return result;
-                    }
-                } else if (subnode->type == BIT_INDEX_NODE) {
-                    return searchHAMTRec(subnode, key, depth + 1, blockSize, maxDepth);
-                }
-            }
-        }
-    }
-
-    return result;
+void delete(VersionedHAMT *vhamt, int key, int value) {
+    int latestVersion = vhamt->versionCount - 1;
+    HAMT *newHamt = createHAMT();
+    newHamt->root = deleteHAMTRec(vhamt->versions[latestVersion]->root, key, value, 0);
+    vhamt->versions = realloc(vhamt->versions, (vhamt->versionCount + 1) * sizeof(HAMT*));
+    vhamt->versions[vhamt->versionCount] = newHamt;
+    vhamt->versionCount++;
+    vhamt->currentVersion = vhamt->versionCount - 1;
 }
 
-SearchResult searchHAMT(VersionedHAMT *vhamt, int key, int version) {
-    if (version >= vhamt->versionCount) {
-        printf("Version %d does not exist.\n", version);
-        SearchResult result = {NULL, 0};
-        return result;
-    }
-    return searchHAMTRec(vhamt->versions[version]->root, key, 0, vhamt->versions[version]->blockSize, vhamt->versions[version]->maxDepth);
-}
-
-void printBitmapBinary(int bitmap) {
-    for (int i = MAX_CHILD - 1; i >= 0; --i) {
-        printf("%d", (bitmap >> i) & 1);
-    }
-}
 
 void enqueue(QueueNode **head, HAMTNode *node, int depth) {
     QueueNode *newNode = malloc(sizeof(QueueNode));
@@ -392,6 +396,12 @@ void printHAMT(VersionedHAMT *vhamt, int version) {
     }
 }
 
+void printBitmapBinary(int bitmap) {
+    for (int i = MAX_CHILD - 1; i >= 0; --i) {
+        printf("%d", (bitmap >> i) & 1);
+    }
+}
+
 void freeHAMTNode(HAMTNode *node) {
     if (node == NULL) return;
 
@@ -422,51 +432,137 @@ void printVersions(VersionedHAMT *vhamt) {
     printf("Current Version: %d\n", vhamt->currentVersion);
 }
 
+void measurePerformance(int N, int D, int U) {
+    VersionedHAMT* vhamt = createVersionedHAMT();
+    clock_t start, end;
+    double insertionTime = 0.0, deletionTime = 0.0, updateTime = 0.0;
 
-// int main() {
-//     VersionedHAMT* vhamt = createVersionedHAMT(MAX_LEVEL, BIT_SEG);
-//     char command[256];
+    // Measure insertion time
+    for (int i = 0; i < N; i++) {
+        int key = rand();
+        int value = rand();
+        start = clock();
+        insert(vhamt, key, value);
+        end = clock();
+        insertionTime += (double)(end - start) / CLOCKS_PER_SEC;
+    }
+    insertionTime /= N;
 
-//     while (fgets(command, sizeof(command), stdin) != NULL) {
-//         char operation[20];
-//         int key, value, version, oldValue, newValue;
-//         sscanf(command, "%s", operation);
+    // Measure deletion time
+    for (int i = 0; i < D; i++) {
+        int key = rand() % N; // Assuming the key was inserted
+        int value = rand(); // You might want to track values for accurate deletion
+        start = clock();
+        delete(vhamt, key, value);
+        end = clock();
+        deletionTime += (double)(end - start) / CLOCKS_PER_SEC;
+    }
+    deletionTime /= D;
 
-//         if (strcmp(operation, "insert") == 0) {
-//             sscanf(command, "%*s %d %d", &key, &value);
-//             insertHAMT(vhamt, key, value);
-//         } else if (strcmp(operation, "search") == 0) {
-//             sscanf(command, "%*s %d %d", &key, &version);
-//             SearchResult result = searchHAMT(vhamt, key, version);
-//             if (result.values != NULL) {
-//                 printf("Values for key %d: ", key);
-//                 for (int i = 0; i < result.valueCount; ++i) {
-//                     printf("%d ", result.values[i]);
-//                 }
-//                 printf("\n");
-//             } else {
-//                 printf("Key %d not found.\n", key);
-//             }
-//         } else if (strcmp(operation, "print") == 0) {
-//             sscanf(command, "%*s %d", &version);
-//             printHAMT(vhamt, version);
-//         } else if (strcmp(operation, "update") == 0) {
-//             sscanf(command, "%*s %d %d %d", &key, &oldValue, &newValue);
-//             updateHAMT(vhamt, key, oldValue, newValue);
-//         } else if (strcmp(operation, "delete") == 0) {
-//             sscanf(command, "%*s %d %d", &key, &value);
-//             deleteHAMT(vhamt, key, value);
-//         } else if (strcmp(operation, "print_versions") == 0) {
-//             printVersions(vhamt);
-//         }
-//     }
+    // Measure update time
+    for (int i = 0; i < U; i++) {
+        int key = rand() % N; // Assuming the key was inserted
+        int oldValue = rand(); // You might want to track values for accurate updates
+        int newValue = rand();
+        start = clock();
+        update(vhamt, key, oldValue, newValue);
+        end = clock();
+        updateTime += (double)(end - start) / CLOCKS_PER_SEC;
+    }
+    updateTime /= U;
 
-//     for (int i = 0; i < vhamt->versionCount; ++i) {
-//         freeHAMT(vhamt->versions[i]);
-//     }
-//     free(vhamt->versions);
-//     free(vhamt);
-//     return 0;
-// }
+    // Print average times
+    printf("Average insertion time: %f seconds\n", insertionTime);
+    printf("Average deletion time: %f seconds\n", deletionTime);
+    printf("Average update time: %f seconds\n", updateTime);
+}
+
+int main() {
+    int N = 10000000;  
+    int U = 50000;   
+    int D = 50000;   
+
+    // Seed the random number generator
+    srand(time(NULL));
+
+    measurePerformance(N, D, U);
+    VersionedHAMT* vhamt = createVersionedHAMT();
+    
+    // Insert values into the HAMT
+    insert(vhamt, 3, 3);
+    insert(vhamt, 4, 4);
+
+    // Print initial versions
+    printf("Initial state of latest version:\n");
+    printHAMT(vhamt, vhamt->versionCount - 1);
+    printf("\n\n");
+
+    // Update a value for a specific key
+    update(vhamt, 4, 4, 0);
+
+    // Print updated versions
+    printf("State of latest version after update:\n");
+    printHAMT(vhamt, vhamt->versionCount - 1);
+    printf("\n\n");
+
+    // Search for the updated key in the latest version
+    SearchResult res = searchVersion(vhamt, 4, vhamt->versionCount - 1);
+    if (res.values != NULL) {
+        printf("Updated values for key 4 in latest version: ");
+        for (int i = 0; i < res.valueCount; ++i) {
+            printf("%d ", res.values[i]);
+        }
+        printf("\n");
+    } else {
+        printf("Key 4 not found in latest version.\n");
+    }
+
+    // Search in the previous version to ensure it remains unchanged
+    res = searchVersion(vhamt, 4, vhamt->versionCount - 2);
+    if (res.values != NULL) {
+        printf("Values for key 4 in previous version: ");
+        for (int i = 0; i < res.valueCount; ++i) {
+            printf("%d ", res.values[i]);
+        }
+        printf("\n");
+    } else {
+        printf("Key 4 not found in previous version.\n");
+    }
+
+    // Delete the updated value
+    delete(vhamt, 4, 0);
+
+    // Print versions after deletion
+    printf("State of latest version after deletion:\n");
+    printHAMT(vhamt, vhamt->versionCount - 1);
+    printf("\n\n");
+
+    // Search for the deleted key in the latest version
+    res = searchVersion(vhamt, 4, vhamt->versionCount - 1);
+    if (res.values != NULL) {
+        printf("Values for key 4 in latest version after deletion: ");
+        for (int i = 0; i < res.valueCount; ++i) {
+            printf("%d ", res.values[i]);
+        }
+        printf("\n");
+    } else {
+        printf("Key 4 not found in latest version after deletion.\n");
+    }
+
+    // Search in the previous version to ensure it remains unchanged
+    res = searchVersion(vhamt, 4, vhamt->versionCount - 2);
+    if (res.values != NULL) {
+        printf("Values for key 4 in previous version after deletion: ");
+        for (int i = 0; i < res.valueCount; ++i) {
+            printf("%d ", res.values[i]);
+        }
+        printf("\n");
+    } else {
+        printf("Key 4 not found in previous version after deletion.\n");
+    }
+
+    return 0;
+}
+
 
 

@@ -1,30 +1,36 @@
+# Compiler
 CC = gcc
-CFLAGS = -Wall -g
 
-# Define the object files
-OBJS = main.o associative_array.o linked_list.o hamt.o
+# Compiler flags
+CFLAGS = -Wall -Wextra -std=c99 -g
 
-# Define the target executable
+# Output executable
 TARGET = hamt
 
+# Source files
+SRCS = hamt.c
+
+# Object files
+OBJS = $(SRCS:.c=.o)
+
+# Default target
 all: $(TARGET)
 
+# Link the object files to create the executable
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
 
-main.o: main.c associative_array.h linked_list.h hamt.h
-	$(CC) $(CFLAGS) -c main.c
+# Compile source files into object files
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-associative_array.o: associative_array.c associative_array.h hamt.h
-	$(CC) $(CFLAGS) -c associative_array.c
-
-linked_list.o: linked_list.c linked_list.h hamt.h
-	$(CC) $(CFLAGS) -c linked_list.c
-
-hamt.o: hamt.c hamt.h
-	$(CC) $(CFLAGS) -c hamt.c
-
+# Clean up object files and executable
 clean:
 	rm -f $(OBJS) $(TARGET)
 
-.PHONY: clean
+# Run the program
+run: $(TARGET)
+	./$(TARGET)
+
+# Phony targets
+.PHONY: all clean run

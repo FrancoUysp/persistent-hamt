@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <math.h>
 
 #define BIT_SEG 4
@@ -38,8 +39,6 @@ typedef struct HAMTNode {
 
 typedef struct HAMT {
     HAMTNode *root;
-    int maxDepth;
-    int blockSize;
 } HAMT;
 
 typedef struct VersionedHAMT {
@@ -54,28 +53,29 @@ typedef struct QueueNode {
     struct QueueNode *next;
 } QueueNode;
 
-VersionedHAMT* createVersionedHAMT(int maxDepth, int blockSize);
-HAMT* createHAMT(int maxDepth, int blockSize);
+VersionedHAMT* createVersionedHAMT();
+HAMT* createHAMT();
 HAMTNode* createBitIndexNode();
 HAMTNode* createLeafNode(int key, int value);
 unsigned int hashFunction(int key);
-HAMTNode* copyHAMTNode(HAMTNode *node);
-void insertHAMT(VersionedHAMT *vhamt, int key, int value);
-void insertHAMTRec(HAMTNode **node, int key, int value, int depth, int blockSize, int maxDepth);
-SearchResult searchHAMT(VersionedHAMT *vhamt, int key, int version);
-SearchResult searchHAMTRec(HAMTNode *node, int key, int depth, int blockSize, int maxDepth);
+HAMTNode* copyPath(HAMTNode *root, int key) ;
+void insertVersion(VersionedHAMT *vhamt, int key, int value, int version);
+void insert(VersionedHAMT *vhamt, int key, int value);
+HAMTNode* insertHAMTRec(HAMTNode *node, int key, int value, int depth);
+SearchResult searchVersion(VersionedHAMT *vhamt, int key, int version);
+SearchResult search(VersionedHAMT *vhamt, int key);
+SearchResult searchHAMTRec(HAMTNode *node, int key, int depth);
 void printHAMT(VersionedHAMT *vhamt, int version);
 void printBitmapBinary(int bitmap);
 void freeHAMT(HAMT *hamt);
-void deleteHAMT(VersionedHAMT *vhamt, int key, int value);
-HAMTNode* deleteHAMTRec(HAMTNode *node, int key, int value, int depth, int blockSize, int maxDepth);
-void updateHAMT(VersionedHAMT *vhamt, int key, int oldValue, int newValue);
-void updateHAMTRec(HAMTNode *node, int key, int oldValue, int newValue, int depth, int blockSize, int maxDepth);
+HAMTNode* deleteHAMTRec(HAMTNode *node, int key, int value, int depth);
+void update(VersionedHAMT *vhamt, int key, int oldValue, int newValue);
+void delete(VersionedHAMT *vhamt, int key, int value);
+HAMTNode* updateHAMTRec(HAMTNode *node, int key, int oldValue, int newValue, int depth);
 void enqueue(QueueNode **head, HAMTNode *node, int depth);
 QueueNode *dequeue(QueueNode **head);
 void printVersions(VersionedHAMT *vhamt);
 void freeHAMTNode(HAMTNode *node);
-
-void intToStr(int num, char *str);
+void measurePerformance(int N, int D, int U);
 
 #endif // HAMT_H
