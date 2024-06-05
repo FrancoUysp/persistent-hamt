@@ -2,7 +2,7 @@
 //https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key
 
 
-// TODO: allow for different types of values and keys ( think about it if we use a linked list to store strings with this thing as the backend then we would like to hash the string value with itself as the value and the string)
+// TODO: allow for different types of values and keys ( think about it if we use a linked list to store strings with this thing as the backend then we would like to hash the string value with itself as the value and the key) e.g. linkedlist.add("some string") -> hamt.insert("some string".hash, "some string")
 // TODO: force the hash to return a u_int_32 (change the return type) but this will also change some other parts of the code (this should be easier)
 // TODO: build a frontend linked list for this hamt and a standart one and then have a main.c run a comparison between the different operations between the two. 
 
