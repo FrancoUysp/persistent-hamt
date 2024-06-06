@@ -2,9 +2,14 @@
 //https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key
 
 
-// TODO: allow for different types of values and keys ( think about it if we use a linked list to store strings with this thing as the backend then we would like to hash the string value with itself as the value and the key) e.g. linkedlist.add("some string") -> hamt.insert("some string".hash, "some string")
-// TODO: force the hash to return a u_int_32 (change the return type) but this will also change some other parts of the code (this should be easier)
+// TODO: make bitseg variable for testing/experimentation
+// TODO: build a small testing key maybe a python file uses it as so file
 // TODO: build a frontend linked list for this hamt and a standart one and then have a main.c run a comparison between the different operations between the two. 
+// TODO: memory leakage!!!
+// TODO: list resources in comments
+// TODO: comment code
+// TODO: radme.md
+// TODO: make code cleaner
 
 // TODO: think of experiments!!!
 #include "hamt.h"
@@ -32,7 +37,7 @@ HAMTNode* createBitIndexNode() {
     return node;
 }
 
-HAMTNode* createLeafNode(int key, int value) {
+HAMTNode* createLeafNode(uint32_t key, int value) {
     HAMTNode* node = malloc(sizeof(HAMTNode));
     node->type = LEAF_NODE;
     node->node.leafNode.key = key;
@@ -42,15 +47,15 @@ HAMTNode* createLeafNode(int key, int value) {
     return node;
 }
 
-unsigned int hashFunction(int x) {
-    x = ((x >> 16) ^ x) * 0x45d9f3b;
-    x = ((x >> 16) ^ x) * 0x45d9f3b;
-    x = (x >> 16) ^ x;
-    return x;
+u_int32_t hashFunction(uint32_t key) {
+    key = ((key >> 16) ^ key) * 0x45d9f3b;
+    key = ((key >> 16) ^ key) * 0x45d9f3b;
+    key = (key >> 16) ^ key;
+    return key;
 }
 
 
-HAMTNode* insertHAMTRec(HAMTNode *node, int key, int value, int depth) {
+HAMTNode* insertHAMTRec(HAMTNode *node, uint32_t key, int value, int depth) {
     unsigned int hash = hashFunction(key);
     int index = (hash >> (depth * BIT_SEG)) & (MAX_CHILD - 1);
 
@@ -97,7 +102,7 @@ HAMTNode* insertHAMTRec(HAMTNode *node, int key, int value, int depth) {
 }
 
 
-void insertVersion(VersionedHAMT *vhamt, int key, int value, int version) {
+void insertVersion(VersionedHAMT *vhamt, uint32_t key, int value, int version) {
     HAMT *newHamt = createHAMT();
     newHamt->root = insertHAMTRec(vhamt->versions[version-1]->root, key, value, 0);
     vhamt->versions = realloc(vhamt->versions, (vhamt->versionCount + 1) * sizeof(HAMT*));
@@ -106,7 +111,7 @@ void insertVersion(VersionedHAMT *vhamt, int key, int value, int version) {
     vhamt->currentVersion = vhamt->versionCount - 1;
 }
 
-void insert(VersionedHAMT *vhamt, int key, int value) {
+void insert(VersionedHAMT *vhamt, uint32_t key, int value) {
     int latestVersion = vhamt->versionCount - 1;
     HAMT *newHamt = createHAMT();
     newHamt->root = insertHAMTRec(vhamt->versions[latestVersion]->root, key, value, 0);
@@ -117,7 +122,7 @@ void insert(VersionedHAMT *vhamt, int key, int value) {
 }
 
 
-SearchResult searchHAMTRec(HAMTNode *node, int key, int depth) {
+SearchResult searchHAMTRec(HAMTNode *node, uint32_t key, int depth) {
     SearchResult result = {NULL, 0};
     if (node == NULL) {
         return result;
@@ -143,7 +148,7 @@ SearchResult searchHAMTRec(HAMTNode *node, int key, int depth) {
     return result;
 }
 
-SearchResult search(VersionedHAMT *vhamt, int key) {
+SearchResult search(VersionedHAMT *vhamt, uint32_t key) {
     int latestVersion = vhamt->versionCount - 1;
     if (latestVersion >= vhamt->versionCount) {
         printf("Version %d does not exist.\n", latestVersion);
@@ -152,7 +157,7 @@ SearchResult search(VersionedHAMT *vhamt, int key) {
     }
     return searchHAMTRec(vhamt->versions[latestVersion]->root, key, 0);
 }
-SearchResult searchVersion(VersionedHAMT *vhamt, int key, int version) {
+SearchResult searchVersion(VersionedHAMT *vhamt, uint32_t key, int version) {
     if (version >= vhamt->versionCount) {
         printf("Version %d does not exist.\n", version);
         SearchResult result = {NULL, 0};
@@ -161,7 +166,7 @@ SearchResult searchVersion(VersionedHAMT *vhamt, int key, int version) {
     return searchHAMTRec(vhamt->versions[version]->root, key, 0);
 }
 
-HAMTNode* updateHAMTRec(HAMTNode *node, int key, int oldValue, int newValue, int depth) {
+HAMTNode* updateHAMTRec(HAMTNode *node, uint32_t key, int oldValue, int newValue, int depth) {
     if (node == NULL) {
         return NULL;
     }
@@ -214,7 +219,7 @@ HAMTNode* updateHAMTRec(HAMTNode *node, int key, int oldValue, int newValue, int
 
 
 
-void updateVersion(VersionedHAMT *vhamt, int key, int oldValue, int newValue, int version) {
+void updateVersion(VersionedHAMT *vhamt, uint32_t key, int oldValue, int newValue, int version) {
     HAMT *newHamt = createHAMT();
     newHamt->root = updateHAMTRec(vhamt->versions[version]->root, key, oldValue, newValue, 0);
     vhamt->versions = realloc(vhamt->versions, (vhamt->versionCount + 1) * sizeof(HAMT*));
@@ -223,7 +228,7 @@ void updateVersion(VersionedHAMT *vhamt, int key, int oldValue, int newValue, in
     vhamt->currentVersion = vhamt->versionCount - 1;
 }
 
-void update(VersionedHAMT *vhamt, int key, int oldValue, int newValue) {
+void update(VersionedHAMT *vhamt, uint32_t key, int oldValue, int newValue) {
     int latestVersion = vhamt->versionCount - 1;
     HAMT *newHamt = createHAMT();
     newHamt->root = updateHAMTRec(vhamt->versions[latestVersion]->root, key, oldValue, newValue, 0);
@@ -234,7 +239,7 @@ void update(VersionedHAMT *vhamt, int key, int oldValue, int newValue) {
 }
 
 
-HAMTNode* deleteHAMTRec(HAMTNode *node, int key, int value, int depth) {
+HAMTNode* deleteHAMTRec(HAMTNode *node, uint32_t key, int value, int depth) {
     if (node == NULL) {
         return NULL;
     }
@@ -298,7 +303,7 @@ HAMTNode* deleteHAMTRec(HAMTNode *node, int key, int value, int depth) {
 
 
 
-void deleteVersion(VersionedHAMT *vhamt, int key, int value, int version) {
+void deleteVersion(VersionedHAMT *vhamt, uint32_t key, int value, int version) {
     HAMT *newHamt = createHAMT();
     newHamt->root = deleteHAMTRec(vhamt->versions[version]->root, key, value, 0);
     vhamt->versions = realloc(vhamt->versions, (vhamt->versionCount + 1) * sizeof(HAMT*));
@@ -307,7 +312,7 @@ void deleteVersion(VersionedHAMT *vhamt, int key, int value, int version) {
     vhamt->currentVersion = vhamt->versionCount - 1;
 }
 
-void delete(VersionedHAMT *vhamt, int key, int value) {
+void delete(VersionedHAMT *vhamt, uint32_t key, int value) {
     int latestVersion = vhamt->versionCount - 1;
     HAMT *newHamt = createHAMT();
     newHamt->root = deleteHAMTRec(vhamt->versions[latestVersion]->root, key, value, 0);
@@ -447,7 +452,7 @@ void measurePerformance(int N, int D, int U) {
 
     // Measure insertion time
     for (int i = 0; i < N; i++) {
-        int key = rand();
+        uint32_t key = rand();
         int value = rand();
         start = clock();
         insert(vhamt, key, value);
@@ -458,7 +463,7 @@ void measurePerformance(int N, int D, int U) {
 
     // Measure deletion time
     for (int i = 0; i < D; i++) {
-        int key = rand() % N; // Assuming the key was inserted
+        uint32_t key = rand() % N; // Assuming the key was inserted
         int value = rand(); // You might want to track values for accurate deletion
         start = clock();
         delete(vhamt, key, value);
@@ -469,7 +474,7 @@ void measurePerformance(int N, int D, int U) {
 
     // Measure update time
     for (int i = 0; i < U; i++) {
-        int key = rand() % N; // Assuming the key was inserted
+        uint32_t key = rand() % N; // Assuming the key was inserted
         int oldValue = rand(); // You might want to track values for accurate updates
         int newValue = rand();
         start = clock();
