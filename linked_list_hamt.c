@@ -1,6 +1,5 @@
 #include "linked_list_hamt.h"
 
-// Create a new linked list using HAMT
 LinkedListHAMT* createLinkedListHAMT() {
     LinkedListHAMT* list = (LinkedListHAMT*)malloc(sizeof(LinkedListHAMT));
     list->vhamt = createVersionedHAMT();
@@ -9,7 +8,6 @@ LinkedListHAMT* createLinkedListHAMT() {
     return list;
 }
 
-// Add a node at a specific index
 void ll_add(LinkedListHAMT* list, int index, int data) {
     if (index < 0 || index > list->size) {
         fprintf(stderr, "Index out of bounds\n");

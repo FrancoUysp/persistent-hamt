@@ -30,15 +30,29 @@ VersionedHAMT* createVersionedHAMT() {
 
 HAMT* createHAMT() {
     HAMT* new_hamt = (HAMT*)(calloc(1, sizeof(HAMT)));
+    if (new_hamt == NULL) {
+        return NULL;
+    }
     new_hamt->root = createBitIndexNode();
+    if (new_hamt->root == NULL) {
+        free(new_hamt);
+        return NULL;
+    }
     return new_hamt;
 }
 
 HAMTNode* createBitIndexNode() {
     HAMTNode* node = malloc(sizeof(HAMTNode));
+    if (node == NULL) {
+        return NULL;
+    }
     node->type = BIT_INDEX_NODE;
     node->node.bitIndexNode.bitmap = 0;
     node->node.bitIndexNode.subnodes = calloc(getMaxChild(), sizeof(HAMTNode*));
+    if (node->node.bitIndexNode.subnodes == NULL) {
+        free(node);
+        return NULL;
+    }
     return node;
 }
 
@@ -52,7 +66,7 @@ HAMTNode* createLeafNode(uint32_t key, int value) {
     return node;
 }
 
-u_int32_t hashFunction(uint32_t key) {
+uint32_t hashFunction(uint32_t key) {
     key = ((key >> 16) ^ key) * 0x45d9f3b;
     key = ((key >> 16) ^ key) * 0x45d9f3b;
     key = (key >> 16) ^ key;
@@ -74,6 +88,7 @@ HAMTNode* insertHAMTRec(HAMTNode *node, uint32_t key, int value, int depth) {
             *newLeaf = *node;
             newLeaf->node.leafNode.values = realloc(newLeaf->node.leafNode.values, (newLeaf->node.leafNode.valueCount + 1) * sizeof(int));
             newLeaf->node.leafNode.values[newLeaf->node.leafNode.valueCount++] = value;
+            // freeLeafNode(node);  // Free the old leaf node
             return newLeaf;
         } else {
             HAMTNode *newBitIndexNode = createBitIndexNode();
@@ -119,8 +134,23 @@ void insertVersion(VersionedHAMT *vhamt, uint32_t key, int value, int version) {
 void insert(VersionedHAMT *vhamt, uint32_t key, int value) {
     int latestVersion = vhamt->versionCount - 1;
     HAMT *newHamt = createHAMT();
+    if (newHamt == NULL) {
+        // Handle allocation failure
+        freeHAMT(newHamt);
+        return;
+    }
     newHamt->root = insertHAMTRec(vhamt->versions[latestVersion]->root, key, value, 0);
+    if (newHamt->root == NULL) {
+        // Handle allocation failure
+        freeHAMT(newHamt);
+        return;
+    }
     vhamt->versions = realloc(vhamt->versions, (vhamt->versionCount + 1) * sizeof(HAMT*));
+    if (vhamt->versions == NULL) {
+        // Handle allocation failure
+        freeHAMT(newHamt);
+        return;
+    }
     vhamt->versions[vhamt->versionCount] = newHamt;
     vhamt->versionCount++;
     vhamt->currentVersion = vhamt->versionCount - 1;
@@ -236,8 +266,22 @@ void updateVersion(VersionedHAMT *vhamt, uint32_t key, int oldValue, int newValu
 void update(VersionedHAMT *vhamt, uint32_t key, int oldValue, int newValue) {
     int latestVersion = vhamt->versionCount - 1;
     HAMT *newHamt = createHAMT();
+    if (newHamt == NULL) {
+        // Handle allocation failure
+        return;
+    }
     newHamt->root = updateHAMTRec(vhamt->versions[latestVersion]->root, key, oldValue, newValue, 0);
+    if (newHamt->root == NULL) {
+        // Handle allocation failure
+        freeHAMT(newHamt);
+        return;
+    }
     vhamt->versions = realloc(vhamt->versions, (vhamt->versionCount + 1) * sizeof(HAMT*));
+    if (vhamt->versions == NULL) {
+        // Handle allocation failure
+        freeHAMT(newHamt);
+        return;
+    }
     vhamt->versions[vhamt->versionCount] = newHamt;
     vhamt->versionCount++;
     vhamt->currentVersion = vhamt->versionCount - 1;
@@ -277,262 +321,270 @@ HAMTNode* deleteHAMTRec(HAMTNode *node, uint32_t key, int value, int depth) {
         return node;
     }
 
-    if (node->type == BIT_INDEX_NODE) {
-        HAMTNode *newNode = malloc(sizeof(HAMTNode));
-        *newNode = *node;
-        newNode->node.bitIndexNode.subnodes = calloc(getMaxChild(), sizeof(HAMTNode*));
+if (node->type == BIT_INDEX_NODE) {
+            HAMTNode *newNode = malloc(sizeof(HAMTNode));
+            *newNode = *node;
+            newNode->node.bitIndexNode.subnodes = calloc(getMaxChild(), sizeof(HAMTNode*));
 
-        for (int i = 0; i < getMaxChild(); i++) {
-            if (i != index) {
-                newNode->node.bitIndexNode.subnodes[i] = node->node.bitIndexNode.subnodes[i];
+            for (int i = 0; i < getMaxChild(); i++) {
+                if (i != index) {
+                    newNode->node.bitIndexNode.subnodes[i] = node->node.bitIndexNode.subnodes[i];
+                }
             }
+
+            newNode->node.bitIndexNode.subnodes[index] = deleteHAMTRec(node->node.bitIndexNode.subnodes[index], key, value, depth + 1);
+            if (newNode->node.bitIndexNode.subnodes[index] == NULL) {
+                newNode->node.bitIndexNode.bitmap &= ~(1 << index);
+            }
+
+            if (newNode->node.bitIndexNode.bitmap == 0) {
+                free(newNode->node.bitIndexNode.subnodes);
+                free(newNode);
+                return NULL;
+            }
+
+            return newNode;
         }
 
-        newNode->node.bitIndexNode.subnodes[index] = deleteHAMTRec(node->node.bitIndexNode.subnodes[index], key, value, depth + 1);
-        if (newNode->node.bitIndexNode.subnodes[index] == NULL) {
-            newNode->node.bitIndexNode.bitmap &= ~(1 << index);
-        }
-
-        if (newNode->node.bitIndexNode.bitmap == 0) {
-            free(newNode->node.bitIndexNode.subnodes);
-            free(newNode);
-            return NULL;
-        }
-
-        return newNode;
+        return NULL;
     }
 
-    return NULL;
-}
 
 
 
+    void deleteVersion(VersionedHAMT *vhamt, uint32_t key, int value, int version) {
+        HAMT *newHamt = createHAMT();
+        newHamt->root = deleteHAMTRec(vhamt->versions[version]->root, key, value, 0);
+        vhamt->versions = realloc(vhamt->versions, (vhamt->versionCount + 1) * sizeof(HAMT*));
+        vhamt->versions[vhamt->versionCount] = newHamt;
+        vhamt->versionCount++;
+        vhamt->currentVersion = vhamt->versionCount - 1;
+    }
 
-void deleteVersion(VersionedHAMT *vhamt, uint32_t key, int value, int version) {
-    HAMT *newHamt = createHAMT();
-    newHamt->root = deleteHAMTRec(vhamt->versions[version]->root, key, value, 0);
-    vhamt->versions = realloc(vhamt->versions, (vhamt->versionCount + 1) * sizeof(HAMT*));
-    vhamt->versions[vhamt->versionCount] = newHamt;
-    vhamt->versionCount++;
-    vhamt->currentVersion = vhamt->versionCount - 1;
-}
-
-void delete(VersionedHAMT *vhamt, uint32_t key, int value) {
-    int latestVersion = vhamt->versionCount - 1;
-    HAMT *newHamt = createHAMT();
-    newHamt->root = deleteHAMTRec(vhamt->versions[latestVersion]->root, key, value, 0);
-    vhamt->versions = realloc(vhamt->versions, (vhamt->versionCount + 1) * sizeof(HAMT*));
-    vhamt->versions[vhamt->versionCount] = newHamt;
-    vhamt->versionCount++;
-    vhamt->currentVersion = vhamt->versionCount - 1;
-}
-
-
-void enqueue(QueueNode **head, HAMTNode *node, int depth) {
-    QueueNode *newNode = malloc(sizeof(QueueNode));
-    newNode->node = node;
-    newNode->depth = depth;
-    newNode->next = NULL;
-
-    if (*head == NULL) {
-        *head = newNode;
-    } else {
-        QueueNode *current = *head;
-        while (current->next != NULL) {
-            current = current->next;
+    void delete(VersionedHAMT *vhamt, uint32_t key, int value) {
+        int latestVersion = vhamt->versionCount - 1;
+        HAMT *newHamt = createHAMT();
+        if (newHamt == NULL) {
+            return;
         }
-        current->next = newNode;
-    }
-}
-
-QueueNode *dequeue(QueueNode **head) {
-    if (*head == NULL) return NULL;
-    QueueNode *dequeuedNode = *head;
-    *head = (*head)->next;
-    return dequeuedNode;
-}
-
-void printHAMT(VersionedHAMT *vhamt, int version) {
-    if (version >= vhamt->versionCount) {
-        printf("Version %d does not exist.\n", version);
-        return;
-    }
-    HAMT *hamt = vhamt->versions[version];
-    if (hamt == NULL || hamt->root == NULL) {
-        printf("HAMT is empty.\n");
-        return;
+        newHamt->root = deleteHAMTRec(vhamt->versions[latestVersion]->root, key, value, 0);
+        if (newHamt->root == NULL) {
+            freeHAMT(newHamt);
+            return;
+        }
+        vhamt->versions = realloc(vhamt->versions, (vhamt->versionCount + 1) * sizeof(HAMT*));
+        if (vhamt->versions == NULL) {
+            freeHAMT(newHamt);
+            return;
+        }
+        vhamt->versions[vhamt->versionCount] = newHamt;
+        vhamt->versionCount++;
+        vhamt->currentVersion = vhamt->versionCount - 1;
     }
 
-    QueueNode *queue = NULL;
-    enqueue(&queue, hamt->root, 0);
 
-    int currentDepth = 0;
-    printf("Level %d:\n", currentDepth);
+    void enqueue(QueueNode **head, HAMTNode *node, int depth) {
+        QueueNode *newNode = malloc(sizeof(QueueNode));
+        newNode->node = node;
+        newNode->depth = depth;
+        newNode->next = NULL;
 
-    while (queue != NULL) {
-        QueueNode *node = dequeue(&queue);
-        if (node->depth > currentDepth) {
-            currentDepth = node->depth;
-            printf("\nLevel %d:\n", currentDepth);
+        if (*head == NULL) {
+            *head = newNode;
+        } else {
+            QueueNode *current = *head;
+            while (current->next != NULL) {
+                current = current->next;
+            }
+            current->next = newNode;
+        }
+    }
+
+    QueueNode *dequeue(QueueNode **head) {
+        if (*head == NULL) return NULL;
+        QueueNode *dequeuedNode = *head;
+        *head = (*head)->next;
+        return dequeuedNode;
+    }
+
+    void printHAMT(VersionedHAMT *vhamt, int version) {
+        if (version >= vhamt->versionCount) {
+            printf("Version %d does not exist.\n", version);
+            return;
+        }
+        HAMT *hamt = vhamt->versions[version];
+        if (hamt == NULL || hamt->root == NULL) {
+            printf("HAMT is empty.\n");
+            return;
         }
 
-        if (node->node->type == BIT_INDEX_NODE) {
-            printf("  --HAMT NODE--\n ");
-            printf("  Bitmap: ");
-            printBitmapBinary(node->node->node.bitIndexNode.bitmap);
-            printf("\n  Nodes: [");
-            for (int i = 0; i < getMaxChild(); ++i) {
-                if (node->node->node.bitIndexNode.subnodes[i] != NULL) {
-                    if (node->node->node.bitIndexNode.subnodes[i]->type == LEAF_NODE) {
-                        printf("Leaf");
+        QueueNode *queue = NULL;
+        enqueue(&queue, hamt->root, 0);
+
+        int currentDepth = 0;
+        printf("Level %d:\n", currentDepth);
+
+        while (queue != NULL) {
+            QueueNode *node = dequeue(&queue);
+            if (node->depth > currentDepth) {
+                currentDepth = node->depth;
+                printf("\nLevel %d:\n", currentDepth);
+            }
+
+            if (node->node->type == BIT_INDEX_NODE) {
+                printf("  --HAMT NODE--\n ");
+                printf("  Bitmap: ");
+                printBitmapBinary(node->node->node.bitIndexNode.bitmap);
+                printf("\n  Nodes: [");
+                for (int i = 0; i < getMaxChild(); ++i) {
+                    if (node->node->node.bitIndexNode.subnodes[i] != NULL) {
+                        if (node->node->node.bitIndexNode.subnodes[i]->type == LEAF_NODE) {
+                            printf("Leaf");
+                        } else {
+                            printf("BitIndex");
+                            enqueue(&queue, node->node->node.bitIndexNode.subnodes[i], currentDepth + 1);
+                        }
                     } else {
-                        printf("BitIndex");
-                        enqueue(&queue, node->node->node.bitIndexNode.subnodes[i], currentDepth + 1);
+                        printf("empty");
                     }
-                } else {
-                    printf("empty");
+                    if (i < getMaxChild() - 1) {
+                        printf(", ");
+                    }
                 }
-                if (i < getMaxChild() - 1) {
-                    printf(", ");
+                printf("]\n");
+            }
+
+            if (node->node->type == LEAF_NODE) {
+                printf("  LeafNode: key = %d, values = [", node->node->node.leafNode.key);
+                for (int i = 0; i < node->node->node.leafNode.valueCount; ++i) {
+                    printf("%d", node->node->node.leafNode.values[i]);
+                    if (i < node->node->node.leafNode.valueCount - 1) {
+                        printf(", ");
+                    }
+                }
+                printf("]\n");
+            }
+
+            free(node);
+        }
+    }
+
+    void printBitmapBinary(int bitmap) {
+        for (int i = getMaxChild() - 1; i >= 0; --i) {
+            printf("%d", (bitmap >> i) & 1);
+        }
+    }
+
+    void freeHAMTNode(HAMTNode *node) {
+        if (node == NULL) return;
+
+        if (node->type == BIT_INDEX_NODE) {
+            for (int i = 0; i < getMaxChild(); ++i) {
+                if (node->node.bitIndexNode.subnodes[i] != NULL) {
+                    freeHAMTNode(node->node.bitIndexNode.subnodes[i]);
                 }
             }
-            printf("]\n");
+            free(node->node.bitIndexNode.subnodes);
+        } else if (node->type == LEAF_NODE) {
+            free(node->node.leafNode.values);
         }
-
-        if (node->node->type == LEAF_NODE) {
-            printf("  LeafNode: key = %d, values = [", node->node->node.leafNode.key);
-            for (int i = 0; i < node->node->node.leafNode.valueCount; ++i) {
-                printf("%d", node->node->node.leafNode.values[i]);
-                if (i < node->node->node.leafNode.valueCount - 1) {
-                    printf(", ");
-                }
-            }
-            printf("]\n");
-        }
-
         free(node);
     }
-}
 
-void printBitmapBinary(int bitmap) {
-    for (int i = getMaxChild() - 1; i >= 0; --i) {
-        printf("%d", (bitmap >> i) & 1);
+    void freeHAMT(HAMT *hamt) {
+        if (hamt == NULL) return;
+        freeHAMTNode(hamt->root);
+        free(hamt);
     }
-}
 
-void freeHAMTNode(HAMTNode *node) {
-    if (node == NULL) return;
+    void printVersions(VersionedHAMT *vhamt) {
+        printf("Versions:\n");
+        for (int i = 0; i < vhamt->versionCount; ++i) {
+            printf("Version %d\n", i);
+        }
+        printf("Current Version: %d\n", vhamt->currentVersion);
+    }
 
-    if (node->type == BIT_INDEX_NODE) {
-        for (int i = 0; i < getMaxChild(); ++i) {
-            if (node->node.bitIndexNode.subnodes[i] != NULL) {
-                freeHAMTNode(node->node.bitIndexNode.subnodes[i]);
+    int getMaxChild() {
+        return 1 << BIT_SEG;
+    }
+
+    int main() {
+
+        VersionedHAMT* vhamt = createVersionedHAMT();
+        
+        // Insert values into the HAMT
+        insert(vhamt, 223, 223);
+        insert(vhamt, 239, 239);
+
+        // Print initial versions
+        printf("Initial state of latest version:\n");
+        printHAMT(vhamt, vhamt->versionCount - 1);
+        printf("\n\n");
+
+        // Update a value for a specific key
+        update(vhamt, 239, 239, 0);
+
+        // Print updated versions
+        printf("State of latest version after update:\n");
+        printHAMT(vhamt, vhamt->versionCount - 1);
+        printf("\n\n");
+
+        // Search for the updated key in the latest version
+        SearchResult res = searchVersion(vhamt, 239, vhamt->versionCount - 1);
+        if (res.values != NULL) {
+            printf("Updated values for key 4 in latest version: ");
+            for (int i = 0; i < res.valueCount; ++i) {
+                printf("%d ", res.values[i]);
             }
+            printf("\n");
+        } else {
+            printf("Key 4 not found in latest version.\n");
         }
-        free(node->node.bitIndexNode.subnodes);
-    } else if (node->type == LEAF_NODE) {
-        free(node->node.leafNode.values);
-    }
-    free(node);
-}
 
-void freeHAMT(HAMT *hamt) {
-    if (hamt == NULL) return;
-    freeHAMTNode(hamt->root);
-    free(hamt);
-}
-
-void printVersions(VersionedHAMT *vhamt) {
-    printf("Versions:\n");
-    for (int i = 0; i < vhamt->versionCount; ++i) {
-        printf("Version %d\n", i);
-    }
-    printf("Current Version: %d\n", vhamt->currentVersion);
-}
-
-int getMaxChild() {
-    return 1 << BIT_SEG;
-}
-
-int main() {
-
-    VersionedHAMT* vhamt = createVersionedHAMT();
-    
-    // Insert values into the HAMT
-    insert(vhamt, 223, 223);
-    insert(vhamt, 239, 239);
-
-    // Print initial versions
-    printf("Initial state of latest version:\n");
-    printHAMT(vhamt, vhamt->versionCount - 1);
-    printf("\n\n");
-
-    // Update a value for a specific key
-    update(vhamt, 239, 239, 0);
-
-    // Print updated versions
-    printf("State of latest version after update:\n");
-    printHAMT(vhamt, vhamt->versionCount - 1);
-    printf("\n\n");
-
-    // Search for the updated key in the latest version
-    SearchResult res = searchVersion(vhamt, 239, vhamt->versionCount - 1);
-    if (res.values != NULL) {
-        printf("Updated values for key 4 in latest version: ");
-        for (int i = 0; i < res.valueCount; ++i) {
-            printf("%d ", res.values[i]);
+        // Search in the previous version to ensure it remains unchanged
+        res = searchVersion(vhamt, 239, vhamt->versionCount - 2);
+        if (res.values != NULL) {
+            printf("Values for key 4 in previous version: ");
+            for (int i = 0; i < res.valueCount; ++i) {
+                printf("%d ", res.values[i]);
+            }
+            printf("\n");
+        } else {
+            printf("Key 4 not found in previous version.\n");
         }
-        printf("\n");
-    } else {
-        printf("Key 4 not found in latest version.\n");
-    }
 
-    // Search in the previous version to ensure it remains unchanged
-    res = searchVersion(vhamt, 239, vhamt->versionCount - 2);
-    if (res.values != NULL) {
-        printf("Values for key 4 in previous version: ");
-        for (int i = 0; i < res.valueCount; ++i) {
-            printf("%d ", res.values[i]);
+        // Delete the updated value
+        delete(vhamt, 239, 0);
+
+        // Print versions after deletion
+        printf("State of latest version after deletion:\n");
+        printHAMT(vhamt, vhamt->versionCount - 1);
+        printf("\n\n");
+
+        // Search for the deleted key in the latest version
+        res = searchVersion(vhamt, 239, vhamt->versionCount - 1);
+        if (res.values != NULL) {
+            printf("Values for key 4 in latest version after deletion: ");
+            for (int i = 0; i < res.valueCount; ++i) {
+                printf("%d ", res.values[i]);
+            }
+            printf("\n");
+        } else {
+            printf("Key 4 not found in latest version after deletion.\n");
         }
-        printf("\n");
-    } else {
-        printf("Key 4 not found in previous version.\n");
-    }
 
-    // Delete the updated value
-    delete(vhamt, 239, 0);
-
-    // Print versions after deletion
-    printf("State of latest version after deletion:\n");
-    printHAMT(vhamt, vhamt->versionCount - 1);
-    printf("\n\n");
-
-    // Search for the deleted key in the latest version
-    res = searchVersion(vhamt, 239, vhamt->versionCount - 1);
-    if (res.values != NULL) {
-        printf("Values for key 4 in latest version after deletion: ");
-        for (int i = 0; i < res.valueCount; ++i) {
-            printf("%d ", res.values[i]);
+        // Search in the previous version to ensure it remains unchanged
+        res = searchVersion(vhamt, 4, vhamt->versionCount - 2);
+        if (res.values != NULL) {
+            printf("Values for key 4 in previous version after deletion: ");
+            for (int i = 0; i < res.valueCount; ++i) {
+                printf("%d ", res.values[i]);
+            }
+            printf("\n");
+        } else {
+            printf("Key 4 not found in previous version after deletion.\n");
         }
-        printf("\n");
-    } else {
-        printf("Key 4 not found in latest version after deletion.\n");
+
+        return 0;
     }
-
-    // Search in the previous version to ensure it remains unchanged
-    res = searchVersion(vhamt, 4, vhamt->versionCount - 2);
-    if (res.values != NULL) {
-        printf("Values for key 4 in previous version after deletion: ");
-        for (int i = 0; i < res.valueCount; ++i) {
-            printf("%d ", res.values[i]);
-        }
-        printf("\n");
-    } else {
-        printf("Key 4 not found in previous version after deletion.\n");
-    }
-
-    return 0;
-}
-
-
-

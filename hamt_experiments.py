@@ -38,33 +38,64 @@ def measure_time(func, *args):
     end_time = time.perf_counter()
     return end_time - start_time
 
-# Experiment 1: Time complexity of std linked list vs HAMT
 def experiment_time_complexity():
-    sizes = [10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000]
-    std_times = []
-    hamt_times = []
+    sizes = [10, 100, 1000, 10000, 100000]
+    operations = ['add', 'update', 'delete', 'search']
+    std_times = {op: [] for op in operations}
+    hamt_times = {op: [] for op in operations}
 
     for size in sizes:
-        # Measure time for std linked list
+        # Measure time for each operation for std linked list
         ll_std = liblinkedlist.createLinkedListSTD()
-        std_time = sum(measure_time(liblinkedlist.addLinkedListSTD, ll_std, i, i) for i in range(size))
-        std_times.append(std_time)
-
-        # Measure time for HAMT linked list
         ll_hamt = liblinkedlisthamt.createLinkedListHAMT()
-        hamt_time = sum(measure_time(liblinkedlisthamt.ll_add, ll_hamt, i, i) for i in range(size))
-        hamt_times.append(hamt_time)
+
+        for i in range(size):
+            liblinkedlist.addLinkedListSTD(ll_std, i, i)
+            liblinkedlisthamt.ll_add(ll_hamt, i, i)
+
+        # Add operation
+        std_time = sum(measure_time(liblinkedlist.addLinkedListSTD, ll_std, i, i) for i in range(size)) / size
+        hamt_time = sum(measure_time(liblinkedlisthamt.ll_add, ll_hamt, i, i) for i in range(size)) / size
+        std_times['add'].append(std_time)
+        hamt_times['add'].append(hamt_time)
+
+        # Update operation
+        std_time = sum(measure_time(liblinkedlist.updateLinkedListSTD, ll_std, i, i+1) for i in range(size)) / size
+        hamt_time = sum(measure_time(liblinkedlisthamt.ll_update, ll_hamt, i, i+1) for i in range(size)) / size
+        std_times['update'].append(std_time)
+        hamt_times['update'].append(hamt_time)
+
+        # Delete operation
+        std_time = sum(measure_time(liblinkedlist.deleteLinkedListSTD, ll_std, i) for i in range(size)) / size
+        hamt_time = sum(measure_time(liblinkedlisthamt.ll_delete, ll_hamt, i) for i in range(size)) / size
+        std_times['delete'].append(std_time)
+        hamt_times['delete'].append(hamt_time)
+
+        # Search operation
+        std_time = sum(measure_time(liblinkedlist.searchLinkedListSTD, ll_std, i) for i in range(size)) / size
+        hamt_time = sum(measure_time(liblinkedlisthamt.ll_search, ll_hamt, i) for i in range(size)) / size
+        std_times['search'].append(std_time)
+        hamt_times['search'].append(hamt_time)
 
     # Plot results
-    plt.figure()
-    plt.plot(sizes, std_times, label='Standard Linked List')
-    plt.plot(sizes, hamt_times, label='HAMT Linked List')
-    plt.xlabel('Size')
-    plt.ylabel('Time (s)')
-    plt.title('Time Complexity')
-    plt.legend()
-    plt.savefig('time_complexity.png')
+    fig, axs = plt.subplots(2, 2, figsize=(15, 10))
+    fig.suptitle('Amortized Average Time Complexity')
+
+    for i, op in enumerate(operations):
+        ax = axs[i//2, i%2]
+        ax.plot(sizes, std_times[op], label='Standard Linked List')
+        ax.plot(sizes, hamt_times[op], label='HAMT Linked List')
+        ax.set_xlabel('Size')
+        ax.set_ylabel('Time per Operation (s)')
+        ax.set_title(op.capitalize())
+        ax.legend()
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+
+    plt.tight_layout()
+    plt.savefig('amortized_time_complexity.png')
     plt.show()
+
 
 # Experiment 2: Space complexity of std linked list vs HAMT
 def experiment_space_complexity():
@@ -135,5 +166,4 @@ def experiment_bit_seg_time_complexity():
 
 if __name__ == "__main__":
     experiment_time_complexity()
-    experiment_space_complexity()
     experiment_bit_seg_time_complexity()
