@@ -1,7 +1,6 @@
 import ctypes
 import time
 import matplotlib.pyplot as plt
-import numpy as np
 import tracemalloc
 
 # Load the shared libraries
@@ -40,7 +39,7 @@ def measure_time(func, *args):
 
 # Experiment 1: Time complexity of std linked list vs HAMT
 def experiment_time_complexity():
-    sizes = [10, 100, 1000, 10000]
+    sizes = [10, 100, 1000, 10000, 100000]
     std_times = []
     hamt_times = []
 
@@ -61,6 +60,8 @@ def experiment_time_complexity():
     plt.plot(sizes, hamt_times, label='HAMT Linked List')
     plt.xlabel('Size')
     plt.ylabel('Time (s)')
+    plt.xscale('log')
+    plt.yscale('log')
     plt.title('Time Complexity')
     plt.legend()
     plt.savefig('time_complexity.png')
@@ -68,7 +69,7 @@ def experiment_time_complexity():
 
 # Experiment 2: Space complexity of std linked list vs HAMT
 def experiment_space_complexity():
-    sizes = [10, 100, 1000, 10000]
+    sizes = [10, 100, 1000, 10000, 100000]
     std_spaces = []
     hamt_spaces = []
 
@@ -102,6 +103,7 @@ def experiment_space_complexity():
     plt.plot(sizes, hamt_spaces, label='HAMT Linked List')
     plt.xlabel('Size')
     plt.ylabel('Space (bytes)')
+    plt.xscale('log')
     plt.title('Space Complexity')
     plt.legend()
     plt.savefig('space_complexity.png')
@@ -110,7 +112,7 @@ def experiment_space_complexity():
 # Experiment 3: Time complexity of HAMT operations over different BIT_SEG sizes
 def experiment_bit_seg_time_complexity():
     bit_segs = [2, 4, 8, 16]
-    sizes = [10, 100, 1000]
+    sizes = [10, 100, 1000, 10000]
     times = {bit_seg: [] for bit_seg in bit_segs}
 
     for bit_seg in bit_segs:
@@ -127,6 +129,7 @@ def experiment_bit_seg_time_complexity():
         plt.plot(sizes, time_values, label=f'BIT_SEG = {bit_seg}')
     plt.xlabel('Size')
     plt.ylabel('Time (s)')
+    plt.xscale('log')
     plt.yscale('log')
     plt.title('HAMT Time Complexity with Different BIT_SEG Sizes')
     plt.legend()
@@ -135,5 +138,4 @@ def experiment_bit_seg_time_complexity():
 
 if __name__ == "__main__":
     experiment_time_complexity()
-    experiment_space_complexity()
     experiment_bit_seg_time_complexity()
