@@ -1,13 +1,25 @@
 #include "linked_list_std.h"
 #include <stdlib.h>
 
-LinkedList* createLinkedListSTD() {
+/**
+* @brief Creates a new standard linked list.
+*
+* @return Pointer to the newly created LinkedList.
+*/
+__attribute__((visibility("default"))) LinkedList* createLinkedListSTD() {
     LinkedList* list = (LinkedList*)malloc(sizeof(LinkedList));
     list->data = 0;
     list->next = NULL;
     return list;
 }
 
+/**
+* @brief Adds a new node with data at the specified index in the linked list.
+*
+* @param list Pointer to the linked list.
+* @param index Index where the new node should be added.
+* @param data Data to be stored in the new node.
+*/
 void addLinkedListSTD(LinkedList* list, int index, int data) {
     LinkedList* newNode = (LinkedList*)malloc(sizeof(LinkedList));
     newNode->data = data;
@@ -22,6 +34,13 @@ void addLinkedListSTD(LinkedList* list, int index, int data) {
     current->next = newNode;
 }
 
+/**
+* @brief Updates the data at the specified index in the linked list.
+*
+* @param list Pointer to the linked list.
+* @param index Index of the node to be updated.
+* @param newData New data to be stored in the node.
+*/
 void updateLinkedListSTD(LinkedList* list, int index, int newData) {
     LinkedList* current = list;
     for (int i = 0; i < index; i++) {
@@ -31,6 +50,12 @@ void updateLinkedListSTD(LinkedList* list, int index, int newData) {
     current->data = newData;
 }
 
+/**
+* @brief Deletes the node at the specified index from the linked list.
+*
+* @param list Pointer to the linked list.
+* @param index Index of the node to be deleted.
+*/
 void deleteLinkedListSTD(LinkedList* list, int index) {
     LinkedList* current = list;
     LinkedList* previous = NULL;
@@ -52,6 +77,13 @@ void deleteLinkedListSTD(LinkedList* list, int index) {
     }
 }
 
+/**
+* @brief Searches for a specific data value in the linked list.
+*
+* @param list Pointer to the linked list.
+* @param data Data value to search for.
+* @return 1 if data is found, 0 otherwise.
+*/
 int searchLinkedListSTD(LinkedList* list, int data) {
     LinkedList* current = list;
     while (current != NULL) {

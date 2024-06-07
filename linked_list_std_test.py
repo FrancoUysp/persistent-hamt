@@ -5,12 +5,27 @@ from ctypes import *
 liblinkedlist = ctypes.CDLL('./liblinkedlist.so')
 
 # Define the C structures and functions
+
 class Node(Structure):
+    """
+    Represents a node in the linked list.
+
+    Attributes:
+        data (c_int): An integer value stored in the node.
+        next (POINTER(Node)): A pointer to the next node in the linked list.
+    """
     pass
 
 Node._fields_ = [("data", c_int), ("next", POINTER(Node))]
 
 class LinkedList(Structure):
+    """
+    Represents a linked list.
+
+    Attributes:
+        head (POINTER(Node)): A pointer to the first node in the linked list.
+        size (c_int): The number of nodes in the linked list.
+    """
     _fields_ = [("head", POINTER(Node)), ("size", c_int)]
 
 liblinkedlist.createLinkedList.restype = POINTER(LinkedList)
@@ -21,11 +36,22 @@ liblinkedlist.search.restype = POINTER(Node)
 liblinkedlist.search.argtypes = [POINTER(LinkedList), c_int]
 
 def print_colored(text, color):
+    """
+    Prints text in the specified color.
+
+    Args:
+        text (str): The text to print.
+        color (str): The color to use for printing.
+    """
     colors = {'red': '\033[91m', 'green': '\033[92m', 'end': '\033[0m'}
     print(f"{colors[color]}{text}{colors['end']}")
 
 # Test case functions
+
 def test_add():
+    """
+    Tests the add function of the linked list.
+    """
     list = liblinkedlist.createLinkedList()
     liblinkedlist.add(list, 0, 10)
     liblinkedlist.add(list, 1, 20)
@@ -37,6 +63,9 @@ def test_add():
         print_colored("test_add: FAIL", 'red')
 
 def test_update():
+    """
+    Tests the update function of the linked list.
+    """
     list = liblinkedlist.createLinkedList()
     liblinkedlist.add(list, 0, 10)
     liblinkedlist.add(list, 1, 20)
@@ -49,6 +78,9 @@ def test_update():
         print_colored("test_update: FAIL", 'red')
 
 def test_delete():
+    """
+    Tests the delete function of the linked list.
+    """
     list = liblinkedlist.createLinkedList()
     liblinkedlist.add(list, 0, 10)
     liblinkedlist.add(list, 1, 20)
@@ -61,6 +93,9 @@ def test_delete():
         print_colored("test_delete: FAIL", 'red')
 
 def test_search():
+    """
+    Tests the search function of the linked list.
+    """
     list = liblinkedlist.createLinkedList()
     liblinkedlist.add(list, 0, 10)
     liblinkedlist.add(list, 1, 20)

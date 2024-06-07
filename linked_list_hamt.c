@@ -1,5 +1,10 @@
 #include "linked_list_hamt.h"
 
+/**
+ * @brief Creates a new linked list based on HAMT (Hash Array Mapped Trie).
+ *
+ * @return Pointer to the newly created LinkedListHAMT.
+ */
 LinkedListHAMT* createLinkedListHAMT() {
     LinkedListHAMT* list = (LinkedListHAMT*)malloc(sizeof(LinkedListHAMT));
     list->vhamt = createVersionedHAMT();
@@ -8,6 +13,13 @@ LinkedListHAMT* createLinkedListHAMT() {
     return list;
 }
 
+/**
+ * @brief Adds a new node with data at the specified index in the linked list.
+ *
+ * @param list Pointer to the LinkedListHAMT.
+ * @param index Index where the new node should be added.
+ * @param data Data to be stored in the new node.
+ */
 void ll_add(LinkedListHAMT* list, int index, int data) {
     if (index < 0 || index > list->size) {
         fprintf(stderr, "Index out of bounds\n");
@@ -19,7 +31,13 @@ void ll_add(LinkedListHAMT* list, int index, int data) {
     list->size++;
 }
 
-// Update data at a specific index
+/**
+ * @brief Updates the data at the specified index in the linked list.
+ *
+ * @param list Pointer to the LinkedListHAMT.
+ * @param index Index of the node to be updated.
+ * @param newData New data to be stored in the node.
+ */
 void ll_update(LinkedListHAMT* list, int index, int newData) {
     if (index < 0 || index >= list->size) {
         fprintf(stderr, "Index out of bounds\n");
@@ -33,7 +51,12 @@ void ll_update(LinkedListHAMT* list, int index, int newData) {
     }
 }
 
-// Delete a node at a specific index
+/**
+ * @brief Deletes the node at the specified index from the linked list.
+ *
+ * @param list Pointer to the LinkedListHAMT.
+ * @param index Index of the node to be deleted.
+ */
 void ll_delete(LinkedListHAMT* list, int index) {
     if (index < 0 || index >= list->size) {
         fprintf(stderr, "Index out of bounds\n");
@@ -48,7 +71,13 @@ void ll_delete(LinkedListHAMT* list, int index) {
     }
 }
 
-// Search for a node with the given data
+/**
+ * @brief Searches for a specific data value in the linked list.
+ *
+ * @param list Pointer to the LinkedListHAMT.
+ * @param data Data value to search for.
+ * @return SearchResult containing the indexes where the data is found.
+ */
 SearchResult ll_search(LinkedListHAMT* list, int data) {
     for (int i = 0; i < list->size; i++) {
         SearchResult result = searchVersion(list->vhamt, i, list->version);

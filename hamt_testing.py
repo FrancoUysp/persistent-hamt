@@ -5,30 +5,75 @@ from ctypes import *
 libhamt = ctypes.CDLL('./libhamt.so')
 
 # Define the C structures and functions
+
 class SearchResult(Structure):
+    """
+    Represents the result of a search operation in a HAMT.
+
+    Attributes:
+        values (POINTER(c_int)): A pointer to an array of integers containing the search results.
+        valueCount (c_int): The number of values found in the search.
+    """
     _fields_ = [("values", POINTER(c_int)), ("valueCount", c_int)]
 
 class HAMTNode(Structure):
     pass
 
 class BitIndexNode(Structure):
+    """
+    Represents a node in the HAMT that contains bitmap and subnodes.
+
+    Attributes:
+        bitmap (c_int): The bitmap indicating which slots are occupied.
+        subnodes (POINTER(POINTER(HAMTNode))): An array of pointers to subnodes.
+    """
     _fields_ = [("bitmap", c_int), ("subnodes", POINTER(POINTER(HAMTNode)))]
 
 class LeafNode(Structure):
+    """
+    Represents a leaf node in the HAMT that contains key, values, and value count.
+
+    Attributes:
+        key (c_uint32): The key of the leaf node.
+        values (POINTER(c_int)): A pointer to an array of values associated with the key.
+        valueCount (c_int): The number of values associated with the key.
+    """
     _fields_ = [("key", c_uint32), ("values", POINTER(c_int)), ("valueCount", c_int)]
 
 class UnionNode(Union):
+    """
+    Represents a union of BitIndexNode and LeafNode.
+
+    Attributes:
+        bitIndexNode (BitIndexNode): A bit index node.
+        leafNode (LeafNode): A leaf node.
+    """
     _fields_ = [("bitIndexNode", BitIndexNode), ("leafNode", LeafNode)]
 
 HAMTNode._fields_ = [("type", c_int), ("node", UnionNode)]
 
 class HAMT(Structure):
+    """
+    Represents a Hash Array Mapped Trie (HAMT) data structure.
+
+    Attributes:
+        root (POINTER(HAMTNode)): A pointer to the root node of the HAMT.
+    """
     _fields_ = [("root", POINTER(HAMTNode))]
 
 class VersionedHAMT(Structure):
+    """
+    Represents a versioned Hash Array Mapped Trie (HAMT) data structure.
+
+    Attributes:
+        versions (POINTER(POINTER(HAMT))): A pointer to an array of pointers to HAMTs representing different versions.
+        versionCount (c_int): The number of versions.
+        currentVersion (c_int): The index of the current version.
+    """
     _fields_ = [("versions", POINTER(POINTER(HAMT))), ("versionCount", c_int), ("currentVersion", c_int)]
 
 # Define the functions
+
 libhamt.createVersionedHAMT.restype = POINTER(VersionedHAMT)
 libhamt.createHAMT.restype = POINTER(HAMT)
 libhamt.createBitIndexNode.restype = POINTER(HAMTNode)
@@ -46,24 +91,65 @@ libhamt.delete.argtypes = [POINTER(VersionedHAMT), c_uint32, c_int]
 libhamt.update.argtypes = [POINTER(VersionedHAMT), c_uint32, c_int, c_int]
 
 # Example usage and testing
+
 def insert(vhamt, key, value):
+    """
+    Inserts a key-value pair into the versioned HAMT.
+
+    Args:
+        vhamt (POINTER(VersionedHAMT)): Pointer to the versioned HAMT.
+        key (c_uint32): The key to insert.
+        value (c_int): The value associated with the key.
+    """
     libhamt.insert(vhamt, key, value)
 
 def delete(vhamt, key, value):
+    """
+    Deletes a key-value pair from the versioned HAMT.
+
+    Args:
+        vhamt (POINTER(VersionedHAMT)): Pointer to the versioned HAMT.
+        key (c_uint32): The key to delete.
+        value (c_int): The value associated with the key.
+    """
     libhamt.delete(vhamt, key, value)
 
 def update(vhamt, key, old_value, new_value):
+    """
+    Updates a value associated with a key in the versioned HAMT.
+
+    Args:
+        vhamt (POINTER(VersionedHAMT)): Pointer to the versioned HAMT.
+        key (c_uint32): The key to update.
+        old_value (c_int): The old value associated with the key.
+        new_value (c_int): The new value to set for the key.
+    """
     libhamt.update(vhamt, key, old_value, new_value)
 
 def search(vhamt, key):
+    """
+    Searches for a key in the versioned HAMT.
+
+    Args:
+        vhamt (POINTER(VersionedHAMT)): Pointer to the versioned HAMT.
+        key (c_uint32): The key to search for.
+
+    Returns:
+        SearchResult: The result of the search operation.
+    """
     result = libhamt.search(vhamt, key)
     return result
 
 def print_colored(text, color):
+    """
+    Prints text in the specified color.
+
+    Args:
+        text (str): The text to print.
+        color (str): The color to use for printing.
+    """
     colors = {'red': '\033[91m', 'green': '\033[92m', 'end': '\033[0m'}
     print(f"{colors[color]}{text}{colors['end']}")
-
-# Test case functions
 
 def test_insert_simple():
     vhamt = libhamt.createVersionedHAMT()
@@ -274,5 +360,3 @@ if __name__ == "__main__":
     test_searchVersion()
     test_partial_persistence()
     test_full_persistence()
-
-
