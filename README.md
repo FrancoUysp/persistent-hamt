@@ -1,4 +1,3 @@
-```
 # Persistent Hash Array Mapped Trie (HAMT) Implementation
 
 This project implements a persistent Hash Array Mapped Trie (HAMT) data structure in C. The HAMT allows for efficient storage and retrieval of key-value pairs with a focus on persistence, enabling efficient versioning and rollback operations.
