@@ -39,7 +39,7 @@ def measure_time(func, *args):
     return end_time - start_time
 
 def experiment_time_complexity():
-    sizes = [10, 100, 1000, 10000, 100000]
+    sizes = [10, 100, 1000, 10000]
     operations = ['add', 'update', 'delete', 'search']
     std_times = {op: [] for op in operations}
     hamt_times = {op: [] for op in operations}
