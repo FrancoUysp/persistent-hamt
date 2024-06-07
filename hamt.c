@@ -17,8 +17,14 @@
 // TODO: write report
 
 #include "hamt.h"
+// Global variable for bit segment size
 int BIT_SEG = 4; 
 
+/**
+* @brief Creates a new versioned HAMT.
+*
+* @return Pointer to the newly created VersionedHAMT.
+*/
 VersionedHAMT* createVersionedHAMT() {
     VersionedHAMT* vhamt = (VersionedHAMT*)(calloc(1, sizeof(VersionedHAMT)));
     vhamt->versions = (HAMT**)(calloc(1, sizeof(HAMT*)));
@@ -28,12 +34,22 @@ VersionedHAMT* createVersionedHAMT() {
     return vhamt;
 }
 
+/**
+* @brief Creates a new HAMT.
+*
+* @return Pointer to the newly created HAMT.
+*/
 HAMT* createHAMT() {
     HAMT* new_hamt = (HAMT*)(calloc(1, sizeof(HAMT)));
     new_hamt->root = createBitIndexNode();
     return new_hamt;
 }
 
+/**
+* @brief Creates a new bit-index node.
+*
+* @return Pointer to the newly created HAMTNode.
+*/
 HAMTNode* createBitIndexNode() {
     HAMTNode* node = malloc(sizeof(HAMTNode));
     node->type = BIT_INDEX_NODE;
@@ -42,6 +58,13 @@ HAMTNode* createBitIndexNode() {
     return node;
 }
 
+/**
+* @brief Creates a new leaf node.
+*
+* @param key The key for the leaf node.
+* @param value The value for the leaf node.
+* @return Pointer to the newly created HAMTNode.
+*/
 HAMTNode* createLeafNode(uint32_t key, int value) {
     HAMTNode* node = malloc(sizeof(HAMTNode));
     node->type = LEAF_NODE;
@@ -52,6 +75,12 @@ HAMTNode* createLeafNode(uint32_t key, int value) {
     return node;
 }
 
+/**
+* @brief Hash function to generate hash for a key.
+*
+* @param key The key to hash.
+* @return The hashed key.
+*/
 u_int32_t hashFunction(uint32_t key) {
     key = ((key >> 16) ^ key) * 0x45d9f3b;
     key = ((key >> 16) ^ key) * 0x45d9f3b;
@@ -59,7 +88,15 @@ u_int32_t hashFunction(uint32_t key) {
     return key;
 }
 
-
+/**
+* @brief Recursive function to insert a key-value pair into the HAMT.
+*
+* @param node The current HAMT node.
+* @param key The key to insert.
+* @param value The value to insert.
+* @param depth The current depth of the tree.
+* @return Pointer to the updated HAMTNode.
+*/
 HAMTNode* insertHAMTRec(HAMTNode *node, uint32_t key, int value, int depth) {
     unsigned int hash = hashFunction(key);
     int index = (hash >> (depth * BIT_SEG)) & (getMaxChild() - 1);
@@ -70,12 +107,14 @@ HAMTNode* insertHAMTRec(HAMTNode *node, uint32_t key, int value, int depth) {
 
     if (node->type == LEAF_NODE) {
         if (node->node.leafNode.key == key) {
+            // Create a new leaf node with updated values
             HAMTNode *newLeaf = malloc(sizeof(HAMTNode));
             *newLeaf = *node;
             newLeaf->node.leafNode.values = realloc(newLeaf->node.leafNode.values, (newLeaf->node.leafNode.valueCount + 1) * sizeof(int));
             newLeaf->node.leafNode.values[newLeaf->node.leafNode.valueCount++] = value;
             return newLeaf;
         } else {
+            // Create a new bit-index node and insert the existing and new leaf nodes
             HAMTNode *newBitIndexNode = createBitIndexNode();
             unsigned int existingHash = hashFunction(node->node.leafNode.key);
             int existingIndex = (existingHash >> (depth * BIT_SEG)) & (getMaxChild() - 1);
@@ -85,6 +124,7 @@ HAMTNode* insertHAMTRec(HAMTNode *node, uint32_t key, int value, int depth) {
             return newBitIndexNode;
         }
     } else if (node->type == BIT_INDEX_NODE) {
+        // Create a new bit-index node with updated subnodes
         HAMTNode *newNode = malloc(sizeof(HAMTNode));
         *newNode = *node;
         newNode->node.bitIndexNode.subnodes = calloc(getMaxChild(), sizeof(HAMTNode*));
@@ -106,7 +146,14 @@ HAMTNode* insertHAMTRec(HAMTNode *node, uint32_t key, int value, int depth) {
     return NULL; // Should never reach here
 }
 
-
+/**
+* @brief Inserts a key-value pair into a specific version of the HAMT.
+*
+* @param vhamt Pointer to the VersionedHAMT.
+* @param key The key to insert.
+* @param value The value to insert.
+* @param version The version number to insert into.
+*/
 void insertVersion(VersionedHAMT *vhamt, uint32_t key, int value, int version) {
     HAMT *newHamt = createHAMT();
     newHamt->root = insertHAMTRec(vhamt->versions[version]->root, key, value, 0);
@@ -116,6 +163,13 @@ void insertVersion(VersionedHAMT *vhamt, uint32_t key, int value, int version) {
     vhamt->currentVersion = vhamt->versionCount - 1;
 }
 
+/**
+* @brief Inserts a key-value pair into the latest version of the HAMT.
+*
+* @param vhamt Pointer to the VersionedHAMT.
+* @param key The key to insert.
+* @param value The value to insert.
+*/
 void insert(VersionedHAMT *vhamt, uint32_t key, int value) {
     int latestVersion = vhamt->versionCount - 1;
     HAMT *newHamt = createHAMT();
@@ -126,7 +180,14 @@ void insert(VersionedHAMT *vhamt, uint32_t key, int value) {
     vhamt->currentVersion = vhamt->versionCount - 1;
 }
 
-
+/**
+* @brief Recursive function to search for a key in the HAMT.
+*
+* @param node The current HAMT node.
+* @param key The key to search for.
+* @param depth The current depth of the tree.
+* @return SearchResult containing the values and their count.
+*/
 SearchResult searchHAMTRec(HAMTNode *node, uint32_t key, int depth) {
     SearchResult result = {NULL, 0};
     if (node == NULL) {
@@ -153,6 +214,13 @@ SearchResult searchHAMTRec(HAMTNode *node, uint32_t key, int depth) {
     return result;
 }
 
+/**
+* @brief Searches for a key in the latest version of the HAMT.
+*
+* @param vhamt Pointer to the VersionedHAMT.
+* @param key The key to search for.
+* @return SearchResult containing the values and their count.
+*/
 SearchResult search(VersionedHAMT *vhamt, uint32_t key) {
     int latestVersion = vhamt->versionCount - 1;
     if (latestVersion >= vhamt->versionCount) {
@@ -162,6 +230,15 @@ SearchResult search(VersionedHAMT *vhamt, uint32_t key) {
     }
     return searchHAMTRec(vhamt->versions[latestVersion]->root, key, 0);
 }
+
+/**
+* @brief Searches for a key in a specific version of the HAMT.
+*
+* @param vhamt Pointer to the VersionedHAMT.
+* @param key The key to search for.
+* @param version The version number to search in.
+* @return SearchResult containing the values and their count.
+*/
 SearchResult searchVersion(VersionedHAMT *vhamt, uint32_t key, int version) {
     if (version >= vhamt->versionCount) {
         printf("Version %d does not exist.\n", version);
@@ -171,6 +248,16 @@ SearchResult searchVersion(VersionedHAMT *vhamt, uint32_t key, int version) {
     return searchHAMTRec(vhamt->versions[version]->root, key, 0);
 }
 
+/**
+* @brief Recursive function to update a value in the HAMT.
+*
+* @param node The current HAMT node.
+* @param key The key to update.
+* @param oldValue The old value to replace.
+* @param newValue The new value to set.
+* @param depth The current depth of the tree.
+* @return Pointer to the updated HAMTNode.
+*/
 HAMTNode* updateHAMTRec(HAMTNode *node, uint32_t key, int oldValue, int newValue, int depth) {
     if (node == NULL) {
         return NULL;
@@ -181,6 +268,7 @@ HAMTNode* updateHAMTRec(HAMTNode *node, uint32_t key, int oldValue, int newValue
 
     if (node->type == LEAF_NODE) {
         if (node->node.leafNode.key == key) {
+            // Create a new leaf node with updated values
             HAMTNode *newLeaf = malloc(sizeof(HAMTNode));
             *newLeaf = *node;
             newLeaf->node.leafNode.values = malloc(newLeaf->node.leafNode.valueCount * sizeof(int));
@@ -221,9 +309,15 @@ HAMTNode* updateHAMTRec(HAMTNode *node, uint32_t key, int oldValue, int newValue
     return NULL; // Should never reach here
 }
 
-
-
-
+/**
+* @brief Updates a value for a specific key in a specific version of the HAMT.
+*
+* @param vhamt Pointer to the VersionedHAMT.
+* @param key The key to update.
+* @param oldValue The old value to replace.
+* @param newValue The new value to set.
+* @param version The version number to update.
+*/
 void updateVersion(VersionedHAMT *vhamt, uint32_t key, int oldValue, int newValue, int version) {
     HAMT *newHamt = createHAMT();
     newHamt->root = updateHAMTRec(vhamt->versions[version]->root, key, oldValue, newValue, 0);
@@ -233,6 +327,14 @@ void updateVersion(VersionedHAMT *vhamt, uint32_t key, int oldValue, int newValu
     vhamt->currentVersion = vhamt->versionCount - 1;
 }
 
+/**
+* @brief Updates a value for a specific key in the latest version of the HAMT.
+*
+* @param vhamt Pointer to the VersionedHAMT.
+* @param key The key to update.
+* @param oldValue The old value to replace.
+* @param newValue The new value to set.
+*/
 void update(VersionedHAMT *vhamt, uint32_t key, int oldValue, int newValue) {
     int latestVersion = vhamt->versionCount - 1;
     HAMT *newHamt = createHAMT();
@@ -243,7 +345,15 @@ void update(VersionedHAMT *vhamt, uint32_t key, int oldValue, int newValue) {
     vhamt->currentVersion = vhamt->versionCount - 1;
 }
 
-
+/**
+* @brief Recursive function to delete a key-value pair from the HAMT.
+*
+* @param node The current HAMT node.
+* @param key The key to delete.
+* @param value The value to delete.
+* @param depth The current depth of the tree.
+* @return Pointer to the updated HAMTNode.
+*/
 HAMTNode* deleteHAMTRec(HAMTNode *node, uint32_t key, int value, int depth) {
     if (node == NULL) {
         return NULL;
@@ -305,9 +415,14 @@ HAMTNode* deleteHAMTRec(HAMTNode *node, uint32_t key, int value, int depth) {
     return NULL;
 }
 
-
-
-
+/**
+* @brief Deletes a key-value pair from a specific version of the HAMT.
+*
+* @param vhamt Pointer to the VersionedHAMT.
+* @param key The key to delete.
+* @param value The value to delete.
+* @param version The version number to delete from.
+*/
 void deleteVersion(VersionedHAMT *vhamt, uint32_t key, int value, int version) {
     HAMT *newHamt = createHAMT();
     newHamt->root = deleteHAMTRec(vhamt->versions[version]->root, key, value, 0);
@@ -317,6 +432,13 @@ void deleteVersion(VersionedHAMT *vhamt, uint32_t key, int value, int version) {
     vhamt->currentVersion = vhamt->versionCount - 1;
 }
 
+/**
+* @brief Deletes a key-value pair from the latest version of the HAMT.
+*
+* @param vhamt Pointer to the VersionedHAMT.
+* @param key The key to delete.
+* @param value The value to delete.
+*/
 void delete(VersionedHAMT *vhamt, uint32_t key, int value) {
     int latestVersion = vhamt->versionCount - 1;
     HAMT *newHamt = createHAMT();
@@ -327,7 +449,13 @@ void delete(VersionedHAMT *vhamt, uint32_t key, int value) {
     vhamt->currentVersion = vhamt->versionCount - 1;
 }
 
-
+/**
+* @brief Adds a node to the queue.
+*
+* @param head Pointer to the head of the queue.
+* @param node The HAMT node to enqueue.
+* @param depth The depth of the node in the tree.
+*/
 void enqueue(QueueNode **head, HAMTNode *node, int depth) {
     QueueNode *newNode = malloc(sizeof(QueueNode));
     newNode->node = node;
@@ -345,6 +473,12 @@ void enqueue(QueueNode **head, HAMTNode *node, int depth) {
     }
 }
 
+/**
+* @brief Removes and returns the front node from the queue.
+*
+* @param head Pointer to the head of the queue.
+* @return Pointer to the dequeued node.
+*/
 QueueNode *dequeue(QueueNode **head) {
     if (*head == NULL) return NULL;
     QueueNode *dequeuedNode = *head;
@@ -352,6 +486,12 @@ QueueNode *dequeue(QueueNode **head) {
     return dequeuedNode;
 }
 
+/**
+* @brief Prints the HAMT for a specific version.
+*
+* @param vhamt Pointer to the VersionedHAMT.
+* @param version The version number to print.
+*/
 void printHAMT(VersionedHAMT *vhamt, int version) {
     if (version >= vhamt->versionCount) {
         printf("Version %d does not exist.\n", version);
@@ -414,12 +554,22 @@ void printHAMT(VersionedHAMT *vhamt, int version) {
     }
 }
 
+/**
+* @brief Prints the bitmap in binary form.
+*
+* @param bitmap The bitmap to print.
+*/
 void printBitmapBinary(int bitmap) {
     for (int i = getMaxChild() - 1; i >= 0; --i) {
         printf("%d", (bitmap >> i) & 1);
     }
 }
 
+/**
+* @brief Frees the memory allocated for a HAMT node.
+*
+* @param node Pointer to the HAMT node to free.
+*/
 void freeHAMTNode(HAMTNode *node) {
     if (node == NULL) return;
 
@@ -436,12 +586,22 @@ void freeHAMTNode(HAMTNode *node) {
     free(node);
 }
 
+/**
+* @brief Frees the memory allocated for a HAMT.
+*
+* @param hamt Pointer to the HAMT to free.
+*/
 void freeHAMT(HAMT *hamt) {
     if (hamt == NULL) return;
     freeHAMTNode(hamt->root);
     free(hamt);
 }
 
+/**
+* @brief Prints all versions of the HAMT.
+*
+* @param vhamt Pointer to the VersionedHAMT.
+*/
 void printVersions(VersionedHAMT *vhamt) {
     printf("Versions:\n");
     for (int i = 0; i < vhamt->versionCount; ++i) {
@@ -450,6 +610,11 @@ void printVersions(VersionedHAMT *vhamt) {
     printf("Current Version: %d\n", vhamt->currentVersion);
 }
 
+/**
+* @brief Returns the maximum number of children a node can have.
+*
+* @return The maximum number of children.
+*/
 int getMaxChild() {
     return 1 << BIT_SEG;
 }
