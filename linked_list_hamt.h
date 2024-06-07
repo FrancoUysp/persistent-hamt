@@ -6,12 +6,13 @@
 typedef struct LinkedListHAMT {
     VersionedHAMT* vhamt;
     int version;
+    int size;
 } LinkedListHAMT;
 
 LinkedListHAMT* createLinkedListHAMT();
-void addLinkedListHAMT(LinkedListHAMT* list, int index, int data);
-void updateLinkedListHAMT(LinkedListHAMT* list, int index, int newData);
-void deleteLinkedListHAMT(LinkedListHAMT* list, int index);
-SearchResult searchLinkedListHAMT(LinkedListHAMT* list, int data);
+void ll_add(LinkedListHAMT* list, int index, int data);
+void ll_update(LinkedListHAMT* list, int index, int newData);
+void ll_delete(LinkedListHAMT* list, int index);
+SearchResult ll_search(LinkedListHAMT* list, int data);
 
 #endif // LINKED_LIST_HAMT_H

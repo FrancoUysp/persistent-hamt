@@ -1,6 +1,7 @@
 import ctypes
 import time
 import matplotlib.pyplot as plt
+import numpy as np
 import tracemalloc
 
 # Load the shared libraries
@@ -24,11 +25,11 @@ liblinkedlist.searchLinkedListSTD.restype = ctypes.c_int
 
 # Define the C functions for HAMT linked list
 liblinkedlisthamt.createLinkedListHAMT.restype = ctypes.POINTER(LinkedListHAMT)
-liblinkedlisthamt.addLinkedListHAMT.argtypes = [ctypes.POINTER(LinkedListHAMT), ctypes.c_int, ctypes.c_int]
-liblinkedlisthamt.updateLinkedListHAMT.argtypes = [ctypes.POINTER(LinkedListHAMT), ctypes.c_int, ctypes.c_int]
-liblinkedlisthamt.deleteLinkedListHAMT.argtypes = [ctypes.POINTER(LinkedListHAMT), ctypes.c_int]
-liblinkedlisthamt.searchLinkedListHAMT.argtypes = [ctypes.POINTER(LinkedListHAMT), ctypes.c_int]
-liblinkedlisthamt.searchLinkedListHAMT.restype = ctypes.c_int
+liblinkedlisthamt.ll_add.argtypes = [ctypes.POINTER(LinkedListHAMT), ctypes.c_int, ctypes.c_int]
+liblinkedlisthamt.ll_update.argtypes = [ctypes.POINTER(LinkedListHAMT), ctypes.c_int, ctypes.c_int]
+liblinkedlisthamt.ll_delete.argtypes = [ctypes.POINTER(LinkedListHAMT), ctypes.c_int]
+liblinkedlisthamt.ll_search.argtypes = [ctypes.POINTER(LinkedListHAMT), ctypes.c_int]
+liblinkedlisthamt.ll_search.restype = ctypes.c_int
 
 # Helper function to measure time
 def measure_time(func, *args):
@@ -39,7 +40,7 @@ def measure_time(func, *args):
 
 # Experiment 1: Time complexity of std linked list vs HAMT
 def experiment_time_complexity():
-    sizes = [10, 100, 1000, 10000, 100000]
+    sizes = [10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000]
     std_times = []
     hamt_times = []
 
@@ -51,7 +52,7 @@ def experiment_time_complexity():
 
         # Measure time for HAMT linked list
         ll_hamt = liblinkedlisthamt.createLinkedListHAMT()
-        hamt_time = sum(measure_time(liblinkedlisthamt.addLinkedListHAMT, ll_hamt, i, i) for i in range(size))
+        hamt_time = sum(measure_time(liblinkedlisthamt.ll_add, ll_hamt, i, i) for i in range(size))
         hamt_times.append(hamt_time)
 
     # Plot results
@@ -60,8 +61,6 @@ def experiment_time_complexity():
     plt.plot(sizes, hamt_times, label='HAMT Linked List')
     plt.xlabel('Size')
     plt.ylabel('Time (s)')
-    plt.xscale('log')
-    plt.yscale('log')
     plt.title('Time Complexity')
     plt.legend()
     plt.savefig('time_complexity.png')
@@ -69,7 +68,7 @@ def experiment_time_complexity():
 
 # Experiment 2: Space complexity of std linked list vs HAMT
 def experiment_space_complexity():
-    sizes = [10, 100, 1000, 10000, 100000]
+    sizes = [10, 100, 1000, 10000]
     std_spaces = []
     hamt_spaces = []
 
@@ -90,7 +89,7 @@ def experiment_space_complexity():
         # Measure space for HAMT linked list
         ll_hamt = liblinkedlisthamt.createLinkedListHAMT()
         for i in range(size):
-            liblinkedlisthamt.addLinkedListHAMT(ll_hamt, i, i)
+            liblinkedlisthamt.ll_add(ll_hamt, i, i)
         snapshot_hamt = tracemalloc.take_snapshot()
         hamt_space = sum(stat.size for stat in snapshot_hamt.statistics('filename'))
         hamt_spaces.append(hamt_space)
@@ -103,7 +102,6 @@ def experiment_space_complexity():
     plt.plot(sizes, hamt_spaces, label='HAMT Linked List')
     plt.xlabel('Size')
     plt.ylabel('Space (bytes)')
-    plt.xscale('log')
     plt.title('Space Complexity')
     plt.legend()
     plt.savefig('space_complexity.png')
@@ -112,7 +110,7 @@ def experiment_space_complexity():
 # Experiment 3: Time complexity of HAMT operations over different BIT_SEG sizes
 def experiment_bit_seg_time_complexity():
     bit_segs = [2, 4, 8, 16]
-    sizes = [10, 100, 1000, 10000]
+    sizes = [10, 100, 1000]
     times = {bit_seg: [] for bit_seg in bit_segs}
 
     for bit_seg in bit_segs:
@@ -120,7 +118,7 @@ def experiment_bit_seg_time_complexity():
             # Assuming BIT_SEG is globally changeable in the C library
             ctypes.c_int.in_dll(liblinkedlisthamt, 'BIT_SEG').value = bit_seg
             ll_hamt = liblinkedlisthamt.createLinkedListHAMT()
-            hamt_time = sum(measure_time(liblinkedlisthamt.addLinkedListHAMT, ll_hamt, i, i) for i in range(size))
+            hamt_time = sum(measure_time(liblinkedlisthamt.ll_add, ll_hamt, i, i) for i in range(size))
             times[bit_seg].append(hamt_time)
 
     # Plot results
@@ -129,7 +127,6 @@ def experiment_bit_seg_time_complexity():
         plt.plot(sizes, time_values, label=f'BIT_SEG = {bit_seg}')
     plt.xlabel('Size')
     plt.ylabel('Time (s)')
-    plt.xscale('log')
     plt.yscale('log')
     plt.title('HAMT Time Complexity with Different BIT_SEG Sizes')
     plt.legend()
@@ -138,4 +135,5 @@ def experiment_bit_seg_time_complexity():
 
 if __name__ == "__main__":
     experiment_time_complexity()
+    experiment_space_complexity()
     experiment_bit_seg_time_complexity()
