@@ -1,85 +1,64 @@
 #include "linked_list_std.h"
+#include <stdlib.h>
 
-// Create a new linked list
-LinkedList* createLinkedList() {
+LinkedList* createLinkedListSTD() {
     LinkedList* list = (LinkedList*)malloc(sizeof(LinkedList));
-    list->head = NULL;
-    list->size = 0;
+    list->data = 0;
+    list->next = NULL;
     return list;
 }
 
-// Add a node at a specific index
-void add(LinkedList* list, int index, int data) {
-    if (index < 0 || index > list->size) {
-        fprintf(stderr, "Index out of bounds\n");
-        return;
-    }
-
-    Node* newNode = (Node*)malloc(sizeof(Node));
+void addLinkedListSTD(LinkedList* list, int index, int data) {
+    LinkedList* newNode = (LinkedList*)malloc(sizeof(LinkedList));
     newNode->data = data;
     newNode->next = NULL;
 
-    if (index == 0) {
-        newNode->next = list->head;
-        list->head = newNode;
-    } else {
-        Node* current = list->head;
-        for (int i = 0; i < index - 1; i++) {
-            current = current->next;
-        }
-        newNode->next = current->next;
-        current->next = newNode;
+    LinkedList* current = list;
+    for (int i = 0; i < index - 1; i++) {
+        if (current->next == NULL) break;
+        current = current->next;
     }
-
-    list->size++;
+    newNode->next = current->next;
+    current->next = newNode;
 }
 
-// Update data at a specific index
-void update(LinkedList* list, int index, int newData) {
-    if (index < 0 || index >= list->size) {
-        fprintf(stderr, "Index out of bounds\n");
-        return;
-    }
-
-    Node* current = list->head;
+void updateLinkedListSTD(LinkedList* list, int index, int newData) {
+    LinkedList* current = list;
     for (int i = 0; i < index; i++) {
+        if (current->next == NULL) return;
         current = current->next;
     }
     current->data = newData;
 }
 
-// Delete a node at a specific index
-void delete(LinkedList* list, int index) {
-    if (index < 0 || index >= list->size) {
-        fprintf(stderr, "Index out of bounds\n");
-        return;
+void deleteLinkedListSTD(LinkedList* list, int index) {
+    LinkedList* current = list;
+    LinkedList* previous = NULL;
+
+    for (int i = 0; i < index; i++) {
+        if (current->next == NULL) return;
+        previous = current;
+        current = current->next;
     }
 
-    Node* current = list->head;
-    if (index == 0) {
-        list->head = current->next;
-        free(current);
+    if (previous == NULL) {
+        LinkedList* temp = list->next;
+        list->data = list->next->data;
+        list->next = list->next->next;
+        free(temp);
     } else {
-        Node* previous = NULL;
-        for (int i = 0; i < index; i++) {
-            previous = current;
-            current = current->next;
-        }
         previous->next = current->next;
         free(current);
     }
-
-    list->size--;
 }
 
-// Search for a node with the given data
-Node* search(LinkedList* list, int data) {
-    Node* current = list->head;
-    while (current) {
+int searchLinkedListSTD(LinkedList* list, int data) {
+    LinkedList* current = list;
+    while (current != NULL) {
         if (current->data == data) {
-            return current;
+            return 1; // Found
         }
         current = current->next;
     }
-    return NULL; // Node not found
+    return 0; // Not found
 }

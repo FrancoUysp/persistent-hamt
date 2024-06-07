@@ -5,27 +5,34 @@ CC = gcc
 CFLAGS = -Wall -Wextra -std=c99 -g -fPIC
 
 # Output shared libraries
-HAMT_TARGET = libhamt.so
-LINKEDLIST_TARGET = liblinkedlist.so
+TARGET_HAMT = libhamt.so
+TARGET_LINKEDLIST = liblinkedlist.so
+TARGET_LINKEDLIST_HAMT = liblinkedlisthamt.so
 
 # Source files
-HAMT_SRCS = hamt.c
-LINKEDLIST_SRCS = linked_list_hamt.c linked_list_std.c
+SRCS_HAMT = hamt.c
+SRCS_LINKEDLIST = linked_list_std.c
+SRCS_LINKEDLIST_HAMT = linked_list_hamt.c
 
 # Object files
-HAMT_OBJS = $(HAMT_SRCS:.c=.o)
-LINKEDLIST_OBJS = $(LINKEDLIST_SRCS:.c=.o)
+OBJS_HAMT = $(SRCS_HAMT:.c=.o)
+OBJS_LINKEDLIST = $(SRCS_LINKEDLIST:.c=.o)
+OBJS_LINKEDLIST_HAMT = $(SRCS_LINKEDLIST_HAMT:.c=.o)
 
 # Default target
-all: $(HAMT_TARGET) $(LINKEDLIST_TARGET)
+all: $(TARGET_HAMT) $(TARGET_LINKEDLIST) $(TARGET_LINKEDLIST_HAMT)
 
 # Create the shared library for HAMT
-$(HAMT_TARGET): $(HAMT_OBJS)
-	$(CC) $(CFLAGS) -shared -o $(HAMT_TARGET) $(HAMT_OBJS)
+$(TARGET_HAMT): $(OBJS_HAMT)
+	$(CC) $(CFLAGS) -shared -o $(TARGET_HAMT) $(OBJS_HAMT)
 
-# Create the shared library for LinkedList
-$(LINKEDLIST_TARGET): $(LINKEDLIST_OBJS) $(HAMT_TARGET)
-	$(CC) $(CFLAGS) -shared -o $(LINKEDLIST_TARGET) $(LINKEDLIST_OBJS) -L. -lhamt
+# Create the shared library for standard linked list
+$(TARGET_LINKEDLIST): $(OBJS_LINKEDLIST)
+	$(CC) $(CFLAGS) -shared -o $(TARGET_LINKEDLIST) $(OBJS_LINKEDLIST)
+
+# Create the shared library for HAMT linked list
+$(TARGET_LINKEDLIST_HAMT): $(OBJS_LINKEDLIST_HAMT) $(TARGET_HAMT)
+	$(CC) $(CFLAGS) -shared -o $(TARGET_LINKEDLIST_HAMT) $(OBJS_LINKEDLIST_HAMT) $(TARGET_HAMT)
 
 # Compile source files into object files
 %.o: %.c
@@ -33,7 +40,7 @@ $(LINKEDLIST_TARGET): $(LINKEDLIST_OBJS) $(HAMT_TARGET)
 
 # Clean up object files and shared libraries
 clean:
-	rm -f $(HAMT_OBJS) $(LINKEDLIST_OBJS) $(HAMT_TARGET) $(LINKEDLIST_TARGET)
+	rm -f $(OBJS_HAMT) $(OBJS_LINKEDLIST) $(OBJS_LINKEDLIST_HAMT) $(TARGET_HAMT) $(TARGET_LINKEDLIST) $(TARGET_LINKEDLIST_HAMT)
 
 # Phony targets
 .PHONY: all clean
