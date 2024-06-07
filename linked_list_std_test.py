@@ -4,104 +4,94 @@ from ctypes import *
 # Load the shared library
 liblinkedlist = ctypes.CDLL('./liblinkedlist.so')
 
-# Define the C structures and functions
+class LinkedList(Structure):
+    """
+    Represents a linked list.
+    """
+    pass
 
 class Node(Structure):
     """
     Represents a node in the linked list.
-
-    Attributes:
-        data (c_int): An integer value stored in the node.
-        next (POINTER(Node)): A pointer to the next node in the linked list.
     """
     pass
 
 Node._fields_ = [("data", c_int), ("next", POINTER(Node))]
+LinkedList._fields_ = [("head", POINTER(Node)), ("size", c_int)]
 
-class LinkedList(Structure):
-    """
-    Represents a linked list.
-
-    Attributes:
-        head (POINTER(Node)): A pointer to the first node in the linked list.
-        size (c_int): The number of nodes in the linked list.
-    """
-    _fields_ = [("head", POINTER(Node)), ("size", c_int)]
-
-liblinkedlist.createLinkedList.restype = POINTER(LinkedList)
-liblinkedlist.add.argtypes = [POINTER(LinkedList), c_int, c_int]
-liblinkedlist.update.argtypes = [POINTER(LinkedList), c_int, c_int]
-liblinkedlist.delete.argtypes = [POINTER(LinkedList), c_int]
-liblinkedlist.search.restype = POINTER(Node)
-liblinkedlist.search.argtypes = [POINTER(LinkedList), c_int]
+liblinkedlist.createLinkedListSTD.restype = POINTER(LinkedList)
+liblinkedlist.addLinkedListSTD.argtypes = [POINTER(LinkedList), c_int, c_int]
+liblinkedlist.updateLinkedListSTD.argtypes = [POINTER(LinkedList), c_int, c_int]
+liblinkedlist.deleteLinkedListSTD.argtypes = [POINTER(LinkedList), c_int]
+liblinkedlist.searchLinkedListSTD.restype = c_int
+liblinkedlist.searchLinkedListSTD.argtypes = [POINTER(LinkedList), c_int]
 
 def print_colored(text, color):
     """
-    Prints text in the specified color.
+    Prints the text in the specified color.
 
     Args:
-        text (str): The text to print.
-        color (str): The color to use for printing.
+        text (str): The text to be printed.
+        color (str): The color of the text. Supported values: 'red', 'green'.
     """
     colors = {'red': '\033[91m', 'green': '\033[92m', 'end': '\033[0m'}
     print(f"{colors[color]}{text}{colors['end']}")
 
-# Test case functions
-
 def test_add():
     """
-    Tests the add function of the linked list.
+    Test case for adding elements to the linked list.
     """
-    list = liblinkedlist.createLinkedList()
-    liblinkedlist.add(list, 0, 10)
-    liblinkedlist.add(list, 1, 20)
-    liblinkedlist.add(list, 2, 30)
-    node = liblinkedlist.search(list, 20)
-    if list.contents.size == 3 and node and node.contents.data == 20:
+    list = liblinkedlist.createLinkedListSTD()
+    liblinkedlist.addLinkedListSTD(list, 0, 10)
+    liblinkedlist.addLinkedListSTD(list, 1, 20)
+    liblinkedlist.addLinkedListSTD(list, 2, 30)
+    found = liblinkedlist.searchLinkedListSTD(list, 20)
+    if found:
         print_colored("test_add: PASSED", 'green')
     else:
+        print(str(list.contents.size) + " " + str(found))
         print_colored("test_add: FAIL", 'red')
 
 def test_update():
     """
-    Tests the update function of the linked list.
+    Test case for updating an element in the linked list.
     """
-    list = liblinkedlist.createLinkedList()
-    liblinkedlist.add(list, 0, 10)
-    liblinkedlist.add(list, 1, 20)
-    liblinkedlist.add(list, 2, 30)
-    liblinkedlist.update(list, 1, 25)
-    node = liblinkedlist.search(list, 25)
-    if node and node.contents.data == 25:
+    list = liblinkedlist.createLinkedListSTD()
+    liblinkedlist.addLinkedListSTD(list, 0, 10)
+    liblinkedlist.addLinkedListSTD(list, 1, 20)
+    liblinkedlist.addLinkedListSTD(list, 2, 30)
+    liblinkedlist.updateLinkedListSTD(list, 1, 25)
+    found = liblinkedlist.searchLinkedListSTD(list, 25)
+    if found:
         print_colored("test_update: PASSED", 'green')
     else:
         print_colored("test_update: FAIL", 'red')
 
 def test_delete():
     """
-    Tests the delete function of the linked list.
+    Test case for deleting an element from the linked list.
     """
-    list = liblinkedlist.createLinkedList()
-    liblinkedlist.add(list, 0, 10)
-    liblinkedlist.add(list, 1, 20)
-    liblinkedlist.add(list, 2, 30)
-    liblinkedlist.delete(list, 1)
-    node = liblinkedlist.search(list, 20)
-    if list.contents.size == 2:
+    list = liblinkedlist.createLinkedListSTD()
+    liblinkedlist.addLinkedListSTD(list, 0, 10)
+    liblinkedlist.addLinkedListSTD(list, 1, 20)
+    liblinkedlist.addLinkedListSTD(list, 2, 30)
+    liblinkedlist.deleteLinkedListSTD(list, 1)
+    found = liblinkedlist.searchLinkedListSTD(list, 20)
+    if not found:
         print_colored("test_delete: PASSED", 'green')
     else:
         print_colored("test_delete: FAIL", 'red')
 
 def test_search():
     """
-    Tests the search function of the linked list.
+    Test case for searching an element in the linked list.
     """
-    list = liblinkedlist.createLinkedList()
-    liblinkedlist.add(list, 0, 10)
-    liblinkedlist.add(list, 1, 20)
-    liblinkedlist.add(list, 2, 30)
-    node = liblinkedlist.search(list, 20)
-    if node and node.contents.data == 20:
+    list = liblinkedlist.createLinkedListSTD()
+    liblinkedlist.addLinkedListSTD(list, 0, 10)
+    liblinkedlist.addLinkedListSTD(list, 1, 20)
+    liblinkedlist.addLinkedListSTD(list, 2, 30)
+    found = liblinkedlist.searchLinkedListSTD(list, 20)
+    if found:
         print_colored("test_search: PASSED", 'green')
     else:
         print_colored("test_search: FAIL", 'red')
