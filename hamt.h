@@ -75,6 +75,7 @@ void enqueue(QueueNode **head, HAMTNode *node, int depth);
 QueueNode *dequeue(QueueNode **head);
 void printVersions(VersionedHAMT *vhamt);
 void freeHAMTNode(HAMTNode *node);
+void freeVersionedHAMT(VersionedHAMT* vhamt);
 void measurePerformance(int N, int D, int U);
 
 #endif // HAMT_H

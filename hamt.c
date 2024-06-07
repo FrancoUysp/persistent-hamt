@@ -27,17 +27,41 @@ VersionedHAMT* createVersionedHAMT() {
     return vhamt;
 }
 
+void freeVersionedHAMT(VersionedHAMT* vhamt) {
+    if (vhamt == NULL) return;
+
+    for (int i = 0; i < vhamt->versionCount; ++i) {
+        freeHAMT(vhamt->versions[i]);
+    }
+    free(vhamt->versions);
+    free(vhamt);
+}
+
 HAMT* createHAMT() {
     HAMT* new_hamt = (HAMT*)(calloc(1, sizeof(HAMT)));
+    if (new_hamt == NULL) {
+        return NULL;
+    }
     new_hamt->root = createBitIndexNode();
+    if (new_hamt->root == NULL) {
+        free(new_hamt);
+        return NULL;
+    }
     return new_hamt;
 }
 
 HAMTNode* createBitIndexNode() {
     HAMTNode* node = malloc(sizeof(HAMTNode));
+    if (node == NULL) {
+        return NULL;
+    }
     node->type = BIT_INDEX_NODE;
     node->node.bitIndexNode.bitmap = 0;
     node->node.bitIndexNode.subnodes = calloc(MAX_CHILD, sizeof(HAMTNode*));
+    if (node->node.bitIndexNode.subnodes == NULL) {
+        free(node);
+        return NULL;
+    }
     return node;
 }
 
@@ -51,7 +75,19 @@ HAMTNode* createLeafNode(uint32_t key, int value) {
     return node;
 }
 
-u_int32_t hashFunction(uint32_t key) {
+void freeLeafNode(HAMTNode* node) {
+    // if (node == NULL) return;
+
+    // if (node->type == LEAF_NODE) {
+    //     if (node->node.leafNode.values != NULL) {
+    //         free(node->node.leafNode.values);
+    //     }
+    //     free(node);
+    // }
+    return;
+}
+
+uint32_t hashFunction(uint32_t key) {
     key = ((key >> 16) ^ key) * 0x45d9f3b;
     key = ((key >> 16) ^ key) * 0x45d9f3b;
     key = (key >> 16) ^ key;
@@ -73,6 +109,7 @@ HAMTNode* insertHAMTRec(HAMTNode *node, uint32_t key, int value, int depth) {
             *newLeaf = *node;
             newLeaf->node.leafNode.values = realloc(newLeaf->node.leafNode.values, (newLeaf->node.leafNode.valueCount + 1) * sizeof(int));
             newLeaf->node.leafNode.values[newLeaf->node.leafNode.valueCount++] = value;
+            freeLeafNode(node);  // Free the old leaf node
             return newLeaf;
         } else {
             HAMTNode *newBitIndexNode = createBitIndexNode();
@@ -118,8 +155,23 @@ void insertVersion(VersionedHAMT *vhamt, uint32_t key, int value, int version) {
 void insert(VersionedHAMT *vhamt, uint32_t key, int value) {
     int latestVersion = vhamt->versionCount - 1;
     HAMT *newHamt = createHAMT();
+    if (newHamt == NULL) {
+        // Handle allocation failure
+        freeHAMT(newHamt);
+        return;
+    }
     newHamt->root = insertHAMTRec(vhamt->versions[latestVersion]->root, key, value, 0);
+    if (newHamt->root == NULL) {
+        // Handle allocation failure
+        freeHAMT(newHamt);
+        return;
+    }
     vhamt->versions = realloc(vhamt->versions, (vhamt->versionCount + 1) * sizeof(HAMT*));
+    if (vhamt->versions == NULL) {
+        // Handle allocation failure
+        freeHAMT(newHamt);
+        return;
+    }
     vhamt->versions[vhamt->versionCount] = newHamt;
     vhamt->versionCount++;
     vhamt->currentVersion = vhamt->versionCount - 1;
@@ -192,8 +244,7 @@ HAMTNode* updateHAMTRec(HAMTNode *node, uint32_t key, int oldValue, int newValue
                     return newLeaf;
                 }
             }
-            free(newLeaf->node.leafNode.values);
-            free(newLeaf);
+            freeLeafNode(newLeaf);  // Free the new leaf node if no update occurred
         }
         return node;
     }
@@ -235,8 +286,22 @@ void updateVersion(VersionedHAMT *vhamt, uint32_t key, int oldValue, int newValu
 void update(VersionedHAMT *vhamt, uint32_t key, int oldValue, int newValue) {
     int latestVersion = vhamt->versionCount - 1;
     HAMT *newHamt = createHAMT();
+    if (newHamt == NULL) {
+        // Handle allocation failure
+        return;
+    }
     newHamt->root = updateHAMTRec(vhamt->versions[latestVersion]->root, key, oldValue, newValue, 0);
+    if (newHamt->root == NULL) {
+        // Handle allocation failure
+        freeHAMT(newHamt);
+        return;
+    }
     vhamt->versions = realloc(vhamt->versions, (vhamt->versionCount + 1) * sizeof(HAMT*));
+    if (vhamt->versions == NULL) {
+        // Handle allocation failure
+        freeHAMT(newHamt);
+        return;
+    }
     vhamt->versions[vhamt->versionCount] = newHamt;
     vhamt->versionCount++;
     vhamt->currentVersion = vhamt->versionCount - 1;
@@ -319,8 +384,22 @@ void deleteVersion(VersionedHAMT *vhamt, uint32_t key, int value, int version) {
 void delete(VersionedHAMT *vhamt, uint32_t key, int value) {
     int latestVersion = vhamt->versionCount - 1;
     HAMT *newHamt = createHAMT();
+    if (newHamt == NULL) {
+        // Handle allocation failure
+        return;
+    }
     newHamt->root = deleteHAMTRec(vhamt->versions[latestVersion]->root, key, value, 0);
+    if (newHamt->root == NULL) {
+        // Handle allocation failure
+        freeHAMT(newHamt);
+        return;
+    }
     vhamt->versions = realloc(vhamt->versions, (vhamt->versionCount + 1) * sizeof(HAMT*));
+    if (vhamt->versions == NULL) {
+        // Handle allocation failure
+        freeHAMT(newHamt);
+        return;
+    }
     vhamt->versions[vhamt->versionCount] = newHamt;
     vhamt->versionCount++;
     vhamt->currentVersion = vhamt->versionCount - 1;
@@ -422,17 +501,22 @@ void printBitmapBinary(int bitmap) {
 void freeHAMTNode(HAMTNode *node) {
     if (node == NULL) return;
 
-    if (node->type == BIT_INDEX_NODE) {
-        for (int i = 0; i < MAX_CHILD; ++i) {
-            if (node->node.bitIndexNode.subnodes[i] != NULL) {
-                freeHAMTNode(node->node.bitIndexNode.subnodes[i]);
-            }
-        }
-        free(node->node.bitIndexNode.subnodes);
-    } else if (node->type == LEAF_NODE) {
-        free(node->node.leafNode.values);
-    }
-    free(node);
+    // if (node->type == BIT_INDEX_NODE) {
+    //     if (node->node.bitIndexNode.subnodes != NULL) {
+    //         for (int i = 0; i < MAX_CHILD; ++i) {
+    //             if (node->node.bitIndexNode.subnodes[i] != NULL) {
+    //                 freeHAMTNode(node->node.bitIndexNode.subnodes[i]);
+    //                 node->node.bitIndexNode.subnodes[i] = NULL;
+    //             }
+    //         }
+    //         free(node->node.bitIndexNode.subnodes);
+    //     }
+    // } else if (node->type == LEAF_NODE) {
+    //     if (node->node.leafNode.values != NULL) {
+    //         free(node->node.leafNode.values);
+    //     }
+    // }
+    // free(node);
 }
 
 void freeHAMT(HAMT *hamt) {
@@ -570,6 +654,8 @@ int main() {
     } else {
         printf("Key 4 not found in previous version after deletion.\n");
     }
+
+    freeVersionedHAMT(vhamt);
 
     return 0;
 }
