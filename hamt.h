@@ -7,9 +7,7 @@
 #include <time.h>
 #include <stdint.h>
 
-#define BIT_SEG 4
-#define MAX_CHILD (1 << BIT_SEG)
-#define MAX_LEVEL (32 / BIT_SEG)
+extern int BIT_SEG;
 
 typedef enum { BIT_INDEX_NODE, LEAF_NODE } NodeType;
 
@@ -76,5 +74,9 @@ QueueNode *dequeue(QueueNode **head);
 void printVersions(VersionedHAMT *vhamt);
 void freeHAMTNode(HAMTNode *node);
 void measurePerformance(int N, int D, int U);
+int getMaxChild();
+int getMaxLevel();
+
+
 
 #endif // HAMT_H

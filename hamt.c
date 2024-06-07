@@ -17,6 +17,7 @@
 // TODO: write report
 
 #include "hamt.h"
+int BIT_SEG = 4; 
 
 VersionedHAMT* createVersionedHAMT() {
     VersionedHAMT* vhamt = (VersionedHAMT*)(calloc(1, sizeof(VersionedHAMT)));
@@ -37,7 +38,7 @@ HAMTNode* createBitIndexNode() {
     HAMTNode* node = malloc(sizeof(HAMTNode));
     node->type = BIT_INDEX_NODE;
     node->node.bitIndexNode.bitmap = 0;
-    node->node.bitIndexNode.subnodes = calloc(MAX_CHILD, sizeof(HAMTNode*));
+    node->node.bitIndexNode.subnodes = calloc(getMaxChild(), sizeof(HAMTNode*));
     return node;
 }
 
@@ -61,7 +62,7 @@ u_int32_t hashFunction(uint32_t key) {
 
 HAMTNode* insertHAMTRec(HAMTNode *node, uint32_t key, int value, int depth) {
     unsigned int hash = hashFunction(key);
-    int index = (hash >> (depth * BIT_SEG)) & (MAX_CHILD - 1);
+    int index = (hash >> (depth * BIT_SEG)) & (getMaxChild() - 1);
 
     if (node == NULL) {
         return createLeafNode(key, value);
@@ -77,7 +78,7 @@ HAMTNode* insertHAMTRec(HAMTNode *node, uint32_t key, int value, int depth) {
         } else {
             HAMTNode *newBitIndexNode = createBitIndexNode();
             unsigned int existingHash = hashFunction(node->node.leafNode.key);
-            int existingIndex = (existingHash >> (depth * BIT_SEG)) & (MAX_CHILD - 1);
+            int existingIndex = (existingHash >> (depth * BIT_SEG)) & (getMaxChild() - 1);
             newBitIndexNode->node.bitIndexNode.bitmap |= (1 << existingIndex);
             newBitIndexNode->node.bitIndexNode.subnodes[existingIndex] = node;
             newBitIndexNode->node.bitIndexNode.subnodes[index] = insertHAMTRec(NULL, key, value, depth + 1);
@@ -86,10 +87,10 @@ HAMTNode* insertHAMTRec(HAMTNode *node, uint32_t key, int value, int depth) {
     } else if (node->type == BIT_INDEX_NODE) {
         HAMTNode *newNode = malloc(sizeof(HAMTNode));
         *newNode = *node;
-        newNode->node.bitIndexNode.subnodes = calloc(MAX_CHILD, sizeof(HAMTNode*));
+        newNode->node.bitIndexNode.subnodes = calloc(getMaxChild(), sizeof(HAMTNode*));
 
         // Copy existing subnodes references
-        for (int i = 0; i < MAX_CHILD; i++) {
+        for (int i = 0; i < getMaxChild(); i++) {
             if (i != index) {
                 newNode->node.bitIndexNode.subnodes[i] = node->node.bitIndexNode.subnodes[i];
             }
@@ -133,7 +134,7 @@ SearchResult searchHAMTRec(HAMTNode *node, uint32_t key, int depth) {
     }
 
     unsigned int hash = hashFunction(key);
-    int index = (hash >> (depth * BIT_SEG)) & (MAX_CHILD - 1);
+    int index = (hash >> (depth * BIT_SEG)) & (getMaxChild() - 1);
 
     if (node->type == LEAF_NODE) {
         if (node->node.leafNode.key == key) {
@@ -176,7 +177,7 @@ HAMTNode* updateHAMTRec(HAMTNode *node, uint32_t key, int oldValue, int newValue
     }
 
     unsigned int hash = hashFunction(key);
-    int index = (hash >> (depth * BIT_SEG)) & (MAX_CHILD - 1);
+    int index = (hash >> (depth * BIT_SEG)) & (getMaxChild() - 1);
 
     if (node->type == LEAF_NODE) {
         if (node->node.leafNode.key == key) {
@@ -201,10 +202,10 @@ HAMTNode* updateHAMTRec(HAMTNode *node, uint32_t key, int oldValue, int newValue
     if (node->type == BIT_INDEX_NODE) {
         HAMTNode *newNode = malloc(sizeof(HAMTNode));
         *newNode = *node;
-        newNode->node.bitIndexNode.subnodes = calloc(MAX_CHILD, sizeof(HAMTNode*));
+        newNode->node.bitIndexNode.subnodes = calloc(getMaxChild(), sizeof(HAMTNode*));
 
         // Copy existing subnodes references
-        for (int i = 0; i < MAX_CHILD; i++) {
+        for (int i = 0; i < getMaxChild(); i++) {
             if (i != index) {
                 newNode->node.bitIndexNode.subnodes[i] = node->node.bitIndexNode.subnodes[i];
             }
@@ -249,7 +250,7 @@ HAMTNode* deleteHAMTRec(HAMTNode *node, uint32_t key, int value, int depth) {
     }
 
     unsigned int hash = hashFunction(key);
-    int index = (hash >> (depth * BIT_SEG)) & (MAX_CHILD - 1);
+    int index = (hash >> (depth * BIT_SEG)) & (getMaxChild() - 1);
 
     if (node->type == LEAF_NODE) {
         if (node->node.leafNode.key == key) {
@@ -279,9 +280,9 @@ HAMTNode* deleteHAMTRec(HAMTNode *node, uint32_t key, int value, int depth) {
     if (node->type == BIT_INDEX_NODE) {
         HAMTNode *newNode = malloc(sizeof(HAMTNode));
         *newNode = *node;
-        newNode->node.bitIndexNode.subnodes = calloc(MAX_CHILD, sizeof(HAMTNode*));
+        newNode->node.bitIndexNode.subnodes = calloc(getMaxChild(), sizeof(HAMTNode*));
 
-        for (int i = 0; i < MAX_CHILD; i++) {
+        for (int i = 0; i < getMaxChild(); i++) {
             if (i != index) {
                 newNode->node.bitIndexNode.subnodes[i] = node->node.bitIndexNode.subnodes[i];
             }
@@ -380,7 +381,7 @@ void printHAMT(VersionedHAMT *vhamt, int version) {
             printf("  Bitmap: ");
             printBitmapBinary(node->node->node.bitIndexNode.bitmap);
             printf("\n  Nodes: [");
-            for (int i = 0; i < MAX_CHILD; ++i) {
+            for (int i = 0; i < getMaxChild(); ++i) {
                 if (node->node->node.bitIndexNode.subnodes[i] != NULL) {
                     if (node->node->node.bitIndexNode.subnodes[i]->type == LEAF_NODE) {
                         printf("Leaf");
@@ -391,7 +392,7 @@ void printHAMT(VersionedHAMT *vhamt, int version) {
                 } else {
                     printf("empty");
                 }
-                if (i < MAX_CHILD - 1) {
+                if (i < getMaxChild() - 1) {
                     printf(", ");
                 }
             }
@@ -414,7 +415,7 @@ void printHAMT(VersionedHAMT *vhamt, int version) {
 }
 
 void printBitmapBinary(int bitmap) {
-    for (int i = MAX_CHILD - 1; i >= 0; --i) {
+    for (int i = getMaxChild() - 1; i >= 0; --i) {
         printf("%d", (bitmap >> i) & 1);
     }
 }
@@ -423,7 +424,7 @@ void freeHAMTNode(HAMTNode *node) {
     if (node == NULL) return;
 
     if (node->type == BIT_INDEX_NODE) {
-        for (int i = 0; i < MAX_CHILD; ++i) {
+        for (int i = 0; i < getMaxChild(); ++i) {
             if (node->node.bitIndexNode.subnodes[i] != NULL) {
                 freeHAMTNode(node->node.bitIndexNode.subnodes[i]);
             }
@@ -449,49 +450,8 @@ void printVersions(VersionedHAMT *vhamt) {
     printf("Current Version: %d\n", vhamt->currentVersion);
 }
 
-void measurePerformance(int N, int D, int U) {
-    VersionedHAMT* vhamt = createVersionedHAMT();
-    clock_t start, end;
-    double insertionTime = 0.0, deletionTime = 0.0, updateTime = 0.0;
-
-    // Measure insertion time
-    for (int i = 0; i < N; i++) {
-        uint32_t key = rand();
-        int value = rand();
-        start = clock();
-        insert(vhamt, key, value);
-        end = clock();
-        insertionTime += (double)(end - start) / CLOCKS_PER_SEC;
-    }
-    insertionTime /= N;
-
-    // Measure deletion time
-    for (int i = 0; i < D; i++) {
-        uint32_t key = rand() % N; // Assuming the key was inserted
-        int value = rand(); // You might want to track values for accurate deletion
-        start = clock();
-        delete(vhamt, key, value);
-        end = clock();
-        deletionTime += (double)(end - start) / CLOCKS_PER_SEC;
-    }
-    deletionTime /= D;
-
-    // Measure update time
-    for (int i = 0; i < U; i++) {
-        uint32_t key = rand() % N; // Assuming the key was inserted
-        int oldValue = rand(); // You might want to track values for accurate updates
-        int newValue = rand();
-        start = clock();
-        update(vhamt, key, oldValue, newValue);
-        end = clock();
-        updateTime += (double)(end - start) / CLOCKS_PER_SEC;
-    }
-    updateTime /= U;
-
-    // Print average times
-    printf("Average insertion time: %f seconds\n", insertionTime);
-    printf("Average deletion time: %f seconds\n", deletionTime);
-    printf("Average update time: %f seconds\n", updateTime);
+int getMaxChild() {
+    return 1 << BIT_SEG;
 }
 
 int main() {
