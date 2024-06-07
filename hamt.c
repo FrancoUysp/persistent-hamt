@@ -2,16 +2,20 @@
 //https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key
 
 
-// TODO: make bitseg variable for testing/experimentation
-// TODO: build a small testing key maybe a python file uses it as so file
-// TODO: build a frontend linked list for this hamt and a standart one and then have a main.c run a comparison between the different operations between the two. 
+// FIXME: shrink the tree for the deletion
+
 // TODO: memory leakage!!!
-// TODO: list resources in comments
-// TODO: comment code
-// TODO: radme.md
-// TODO: make code cleaner
 
 // TODO: think of experiments!!!
+// TODO: build a small experiments file maybe a python file uses it as so file
+// TODO: build a frontend linked list for this hamt and a standart one and then have a main.c run a comparison between the different operations between the two. 
+// TODO: list resources in comments
+// TODO: make code cleaner
+// TODO: comment code
+// TODO: radme.md
+
+// TODO: write report
+
 #include "hamt.h"
 
 VersionedHAMT* createVersionedHAMT() {
@@ -104,7 +108,7 @@ HAMTNode* insertHAMTRec(HAMTNode *node, uint32_t key, int value, int depth) {
 
 void insertVersion(VersionedHAMT *vhamt, uint32_t key, int value, int version) {
     HAMT *newHamt = createHAMT();
-    newHamt->root = insertHAMTRec(vhamt->versions[version-1]->root, key, value, 0);
+    newHamt->root = insertHAMTRec(vhamt->versions[version]->root, key, value, 0);
     vhamt->versions = realloc(vhamt->versions, (vhamt->versionCount + 1) * sizeof(HAMT*));
     vhamt->versions[vhamt->versionCount] = newHamt;
     vhamt->versionCount++;
@@ -491,19 +495,12 @@ void measurePerformance(int N, int D, int U) {
 }
 
 int main() {
-    int N = 1000;  
-    int U = 500;   
-    int D = 500;   
 
-    // Seed the random number generator
-    srand(time(NULL));
-
-    measurePerformance(N, D, U);
     VersionedHAMT* vhamt = createVersionedHAMT();
     
     // Insert values into the HAMT
-    insert(vhamt, 3, 3);
-    insert(vhamt, 4, 4);
+    insert(vhamt, 223, 223);
+    insert(vhamt, 239, 239);
 
     // Print initial versions
     printf("Initial state of latest version:\n");
@@ -511,7 +508,7 @@ int main() {
     printf("\n\n");
 
     // Update a value for a specific key
-    update(vhamt, 4, 4, 0);
+    update(vhamt, 239, 239, 0);
 
     // Print updated versions
     printf("State of latest version after update:\n");
@@ -519,7 +516,7 @@ int main() {
     printf("\n\n");
 
     // Search for the updated key in the latest version
-    SearchResult res = searchVersion(vhamt, 4, vhamt->versionCount - 1);
+    SearchResult res = searchVersion(vhamt, 239, vhamt->versionCount - 1);
     if (res.values != NULL) {
         printf("Updated values for key 4 in latest version: ");
         for (int i = 0; i < res.valueCount; ++i) {
@@ -531,7 +528,7 @@ int main() {
     }
 
     // Search in the previous version to ensure it remains unchanged
-    res = searchVersion(vhamt, 4, vhamt->versionCount - 2);
+    res = searchVersion(vhamt, 239, vhamt->versionCount - 2);
     if (res.values != NULL) {
         printf("Values for key 4 in previous version: ");
         for (int i = 0; i < res.valueCount; ++i) {
@@ -543,7 +540,7 @@ int main() {
     }
 
     // Delete the updated value
-    delete(vhamt, 4, 0);
+    delete(vhamt, 239, 0);
 
     // Print versions after deletion
     printf("State of latest version after deletion:\n");
@@ -551,7 +548,7 @@ int main() {
     printf("\n\n");
 
     // Search for the deleted key in the latest version
-    res = searchVersion(vhamt, 4, vhamt->versionCount - 1);
+    res = searchVersion(vhamt, 239, vhamt->versionCount - 1);
     if (res.values != NULL) {
         printf("Values for key 4 in latest version after deletion: ");
         for (int i = 0; i < res.valueCount; ++i) {

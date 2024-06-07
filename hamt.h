@@ -58,7 +58,6 @@ HAMT* createHAMT();
 HAMTNode* createBitIndexNode();
 HAMTNode* createLeafNode(uint32_t key, int value);
 uint32_t hashFunction(uint32_t key);
-HAMTNode* copyPath(HAMTNode *root, uint32_t key) ;
 void insertVersion(VersionedHAMT *vhamt, uint32_t key, int value, int version);
 void insert(VersionedHAMT *vhamt, uint32_t key, int value);
 HAMTNode* insertHAMTRec(HAMTNode *node, uint32_t key, int value, int depth);

@@ -2,10 +2,10 @@
 CC = gcc
 
 # Compiler flags
-CFLAGS = -Wall -Wextra -std=c99 -g
+CFLAGS = -Wall -Wextra -std=c99 -g -fPIC
 
-# Output executable
-TARGET = hamt
+# Output shared library
+TARGET = libhamt.so
 
 # Source files
 SRCS = hamt.c
@@ -16,21 +16,17 @@ OBJS = $(SRCS:.c=.o)
 # Default target
 all: $(TARGET)
 
-# Link the object files to create the executable
+# Create the shared library
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
+	$(CC) $(CFLAGS) -shared -o $(TARGET) $(OBJS)
 
 # Compile source files into object files
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Clean up object files and executable
+# Clean up object files and shared library
 clean:
 	rm -f $(OBJS) $(TARGET)
 
-# Run the program
-run: $(TARGET)
-	./$(TARGET)
-
 # Phony targets
-.PHONY: all clean run
+.PHONY: all clean
