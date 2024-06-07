@@ -54,28 +54,29 @@ typedef struct QueueNode {
 VersionedHAMT* createVersionedHAMT();
 HAMT* createHAMT();
 HAMTNode* createBitIndexNode();
-HAMTNode* createLeafNode(uint32_t key, int value);
-uint32_t hashFunction(uint32_t key);
-void insertVersion(VersionedHAMT *vhamt, uint32_t key, int value, int version);
-void insert(VersionedHAMT *vhamt, uint32_t key, int value);
-HAMTNode* insertHAMTRec(HAMTNode *node, uint32_t key, int value, int depth);
-SearchResult searchVersion(VersionedHAMT *vhamt, uint32_t key, int version);
-SearchResult search(VersionedHAMT *vhamt, uint32_t key);
-SearchResult searchHAMTRec(HAMTNode *node, uint32_t key, int depth);
-void printHAMT(VersionedHAMT *vhamt, int version);
-void printBitmapBinary(int bitmap);
-void freeHAMT(HAMT *hamt);
-HAMTNode* deleteHAMTRec(HAMTNode *node, uint32_t key, int value, int depth);
-void update(VersionedHAMT *vhamt, uint32_t key, int oldValue, int newValue);
+void updateVersion(VersionedHAMT *vhamt, uint32_t key, int oldValue, int newValue, int version);
 void delete(VersionedHAMT *vhamt, uint32_t key, int value);
+HAMTNode* deleteHAMTRec(HAMTNode *node, uint32_t key, int value, int depth);
 HAMTNode* updateHAMTRec(HAMTNode *node, uint32_t key, int oldValue, int newValue, int depth);
+HAMTNode* createLeafNode(uint32_t key, int value);
+void insert(VersionedHAMT *vhamt, uint32_t key, int value);
+SearchResult search(VersionedHAMT *vhamt, uint32_t key);
+QueueNode* dequeue(QueueNode **head);
+void printHAMT(VersionedHAMT *vhamt, int version);
+void insertVersion(VersionedHAMT *vhamt, uint32_t key, int value, int version);
+void update(VersionedHAMT *vhamt, uint32_t key, int oldValue, int newValue);
+void printBitmapBinary(int bitmap);
+HAMTNode* insertHAMTRec(HAMTNode *node, uint32_t key, int value, int depth);
+SearchResult searchHAMTRec(HAMTNode *node, uint32_t key, int depth);
+void deleteVersion(VersionedHAMT *vhamt, uint32_t key, int value, int version);
+uint32_t hashFunction(uint32_t key);
 void enqueue(QueueNode **head, HAMTNode *node, int depth);
-QueueNode *dequeue(QueueNode **head);
-void printVersions(VersionedHAMT *vhamt);
+void freeHAMT(HAMT *hamt);
 void freeHAMTNode(HAMTNode *node);
-void measurePerformance(int N, int D, int U);
+SearchResult searchVersion(VersionedHAMT *vhamt, uint32_t key, int version);
+void printVersions(VersionedHAMT *vhamt);
 int getMaxChild();
-int getMaxLevel();
+
 
 
 

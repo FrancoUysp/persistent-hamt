@@ -5,13 +5,13 @@
 // FIXME: shrink the tree for the deletion
 
 // TODO: memory leakage!!!
+// TODO: comment code
 
 // TODO: think of experiments!!!
 // TODO: build a small experiments file maybe a python file uses it as so file
 // TODO: build a frontend linked list for this hamt and a standart one and then have a main.c run a comparison between the different operations between the two. 
 // TODO: list resources in comments
 // TODO: make code cleaner
-// TODO: comment code
 // TODO: radme.md
 
 // TODO: write report
