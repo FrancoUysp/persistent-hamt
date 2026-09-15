@@ -42,5 +42,12 @@ $(TARGET_LINKEDLIST_HAMT): $(OBJS_LINKEDLIST_HAMT) $(TARGET_HAMT)
 clean:
 	rm -f $(OBJS_HAMT) $(OBJS_LINKEDLIST) $(OBJS_LINKEDLIST_HAMT) $(TARGET_HAMT) $(TARGET_LINKEDLIST) $(TARGET_LINKEDLIST_HAMT)
 
+# Build the shared libraries and run the ctypes test scripts.
+# LD_LIBRARY_PATH=. lets the loader find libhamt.so next to liblinkedlisthamt.so on Linux.
+test: all
+	LD_LIBRARY_PATH=. python3 linked_list_std_test.py
+	LD_LIBRARY_PATH=. python3 linked_list_hamt_test.py
+	LD_LIBRARY_PATH=. python3 hamt_testing.py
+
 # Phony targets
-.PHONY: all clean
+.PHONY: all clean test
