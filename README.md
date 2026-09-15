@@ -44,7 +44,13 @@ This will generate the shared library files.
 
 ### Running Tests
 
-To run the included test suite, execute the following command:
+The quickest way is `make test`, which builds the shared libraries and runs the three test scripts:
+
+```bash
+make test
+```
+
+To run them individually:
 
 ```bash
 python linked_list_std_test.py
