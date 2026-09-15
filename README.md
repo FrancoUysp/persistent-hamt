@@ -24,7 +24,7 @@ To use this project, follow these steps:
 1. Clone the repository to your local machine:
 
 ```bash
-git clone <repository_url>
+git clone https://github.com/FrancoUysp/persistent-hamt.git
 cd persistent-hamt
 ```
 
@@ -86,4 +86,15 @@ export LD_LIBRARY_PATH=/path/to/libhamt.so:$LD_LIBRARY_PATH
 ```
 
 Replace `/path/to/libhamt.so` with the actual path to the `libhamt.so` file in your system.
-```
+
+## Contributing
+
+Issues and pull requests are welcome. Please run the Python test scripts above before opening a pull request.
+
+## Credits
+
+Written by Franco Uys, with contributions from Shriyan Singh.
+
+## License
+
+Released under the MIT License. See [LICENSE](LICENSE).

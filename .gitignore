@@ -330,3 +330,8 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/c,python,linux,windows,macos,venv,cmake
+
+### Project ###
+# compiled example binary and editor settings
+hamt
+.vscode/
