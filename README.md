@@ -1,5 +1,7 @@
 # Persistent Hash Array Mapped Trie (HAMT) Implementation
 
+[![CI](https://github.com/FrancoUysp/persistent-hamt/actions/workflows/ci.yml/badge.svg)](https://github.com/FrancoUysp/persistent-hamt/actions/workflows/ci.yml)
+
 This project implements a persistent Hash Array Mapped Trie (HAMT) data structure in C. The HAMT allows for efficient storage and retrieval of key-value pairs with a focus on persistence, enabling efficient versioning and rollback operations.
 
 ## Table of Contents
